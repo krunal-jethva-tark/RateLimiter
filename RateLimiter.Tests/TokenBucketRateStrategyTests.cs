@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Http;
 using Moq;
-using RateLimiter.KeyGenerators;
 using RateLimiter.Models;
 using RateLimiter.Stores;
 using RateLimiter.Strategies;
@@ -10,105 +8,176 @@ namespace RateLimiter.Tests;
 public class TokenBucketRateStrategyTests
 {
     private readonly Mock<IRateLimitCounterStore> _counterStoreMock;
+    private readonly TokenBucketOptions _options;
     private readonly TokenBucketRateStrategy _strategy;
 
     public TokenBucketRateStrategyTests()
     {
         _counterStoreMock = new Mock<IRateLimitCounterStore>();
-        var options = new TokenBucketOptions
+        _options = new TokenBucketOptions
         {
-            KeyGenerator = KeyGenerator.User, // Use your key generator
-            MaxRequestsPerSecond = 5, // Maximum tokens per second
-            BurstCapacity = 10 // Maximum burst capacity
+            MaxRequestsPerSecond = 10, // Example: 10 requests per second
+            BurstCapacity = 100 // Example: Up to 100 tokens can be held
+        };
+        _strategy = new TokenBucketRateStrategy(_counterStoreMock.Object, _options);
+    }
+
+    [Fact]
+    public async Task IsRequestPermittedAsync_ShouldPermitRequest_WhenTokensAvailable()
+    {
+        // Arrange
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData
+        {
+            TokensAvailable = 5,
+            LastRefillTime = asOfDate.AddSeconds(-1),
+            CreatedAt = asOfDate,
         };
 
-        _strategy = new TokenBucketRateStrategy(_counterStoreMock.Object, options);
-    }
-
-    [Fact]
-    public async Task IsRequestPermittedAsync_ShouldAllowRequests_WhenTokensAvailable()
-    {
-        // Arrange
-        var key = "test_key";
-        var tokensAvailable = 5; // Initial tokens available
-        var lastRefillTime = DateTime.UtcNow.AddSeconds(-1); // Last refill time in the past
-        _counterStoreMock.Setup(m => m.GetTokenBucketStatusAsync(key)).ReturnsAsync((tokensAvailable, lastRefillTime));
-
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key)).ReturnsAsync(rateLimitData);
+        
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(CreateHttpContext());
-
+        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        
         // Assert
         Assert.True(result);
-        _counterStoreMock.Verify(m => m.UpdateTokenBucketAsync(key, tokensAvailable - 1, It.IsAny<DateTime>()), Times.Once);
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
-
+    
     [Fact]
-    public async Task IsRequestPermittedAsync_ShouldRejectRequests_WhenNoTokensAvailable()
+    public async Task IsRequestPermittedAsync_ShouldRejectRequest_WhenNoTokensAvailable()
     {
         // Arrange
-        var key = "test_key";
-        var tokensAvailable = 0; // No tokens available
-        var lastRefillTime = DateTime.UtcNow; // Last refill time is now
-        _counterStoreMock.Setup(m => m.GetTokenBucketStatusAsync(key)).ReturnsAsync((tokensAvailable, lastRefillTime));
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData
+        {
+            TokensAvailable = 0,
+            LastRefillTime = asOfDate.AddSeconds(-1),
+            CreatedAt = asOfDate
+        };
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(CreateHttpContext());
+        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
         Assert.False(result);
-        _counterStoreMock.Verify(m => m.UpdateTokenBucketAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<DateTime>()), Times.Never);
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Never);
     }
 
     [Fact]
-    public async Task IsRequestPermittedAsync_ShouldRefillTokens_Correctly()
+    public async Task IsRequestPermittedAsync_ShouldRefillTokenOverTime()
     {
         // Arrange
-        var key = "test_key";
-        var tokensAvailable = 0; // No tokens available initially
-        var lastRefillTime = DateTime.UtcNow.AddSeconds(-2); // Last refill time in the past
-        _counterStoreMock.Setup(m => m.GetTokenBucketStatusAsync(key)).ReturnsAsync((tokensAvailable, lastRefillTime));
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData
+        {
+            TokensAvailable = 50, // Initial tokens
+            LastRefillTime = asOfDate.AddSeconds(-5), // 5 seconds ago
+            CreatedAt = asOfDate
+        };
 
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key)).ReturnsAsync(rateLimitData);
+        
         // Act
-        var result1 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Should allow as tokens will be added
-        var result2 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Should allow again as tokens will be added
-
+        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        
         // Assert
-        Assert.True(result1);
-        Assert.True(result2);
-        _counterStoreMock.Verify(m => m.UpdateTokenBucketAsync(key, 0, It.IsAny<DateTime>()), Times.Exactly(2)); // Two tokens should be consumed
+        Assert.True(result);
+        Assert.Equal(asOfDate, rateLimitData.LastRefillTime);
+        
+        // 10 tokens per second * 5 seconds = 50 tokens added. Burst capacity is 100.
+        Assert.Equal(99, rateLimitData.TokensAvailable);
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
-
+    
     [Fact]
-    public async Task IsRequestPermittedAsync_ShouldNotExceedBurstCapacity()
+    public async Task IsRequestPermittedAsync_ShouldHandleBurstTrafficAfterIdlePeriod()
     {
         // Arrange
-        var key = "test_key";
-        var tokensAvailable = 10; // Tokens available at burst capacity
-        var lastRefillTime = DateTime.UtcNow.AddSeconds(-1); // Last refill time in the past
-        _counterStoreMock.Setup(m => m.GetTokenBucketStatusAsync(key)).ReturnsAsync((tokensAvailable, lastRefillTime));
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData
+        {
+            TokensAvailable = 0, // No tokens available initially
+            LastRefillTime = asOfDate.AddSeconds(-10), // 10 seconds ago
+            CreatedAt = asOfDate
+        };
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
 
         // Act
-        var result1 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Consume 1 token
-        var result2 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Consume 1 token
-        var result3 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Consume 1 token
-        var result4 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Consume 1 token
-        var result5 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Consume 1 token
-        var result6 = await _strategy.IsRequestPermittedAsync(CreateHttpContext()); // Should still allow, but burst capacity will not increase
+        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
-        Assert.True(result1);
-        Assert.True(result2);
-        Assert.True(result3);
-        Assert.True(result4);
-        Assert.True(result5);
-        Assert.False(result6); // This should reject as we exceed burst capacity
-        _counterStoreMock.Verify(m => m.UpdateTokenBucketAsync(key, It.IsAny<int>(), It.IsAny<DateTime>()), Times.Exactly(5)); // Five tokens consumed
+        Assert.True(result);
+            
+        // 10 tokens per second * 10 seconds = 100 tokens added (max burst capacity).
+        Assert.Equal(99, rateLimitData.TokensAvailable); // One token consumed for the current request.
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
-
-    private HttpContext CreateHttpContext()
+    
+    [Fact]
+    public async Task IsRequestPermittedAsync_ShouldNotExceedBurstCapacity_WhenRefilling()
     {
-        var context = new DefaultHttpContext();
-        context.Request.Headers["X-Forwarded-For"] = "192.168.0.1"; // Mock IP for the key
-        return context;
+        // Arrange
+        var key = "test-key";
+        var asOfDate = DateTime.UtcNow.AddSeconds(15); // Simulating 15 seconds of idle time
+        var rateLimitData = new RateLimitData
+        {
+            TokensAvailable = 80, // Already has 80 tokens
+            LastRefillTime = asOfDate.AddSeconds(-15), // Refill last happened 15 seconds ago
+            CreatedAt = asOfDate
+        };
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
+
+        // Act
+        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+
+        // Assert
+        Assert.True(result);
+
+        // 10 tokens per second * 15 seconds = 150 tokens added, but burst capacity is capped at 100.
+        Assert.Equal(99, rateLimitData.TokensAvailable); // After one token is consumed for the request.
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
+    }
+    
+    [Fact]
+    public async Task IsRequestPermittedAsync_ShouldAllowMaxBurstRequestsUpToBurstCapacity()
+    {
+        // Arrange
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow.AddSeconds(10); // Simulating 10 seconds of idle time
+        var rateLimitData = new RateLimitData
+        {
+            TokensAvailable = 0,
+            LastRefillTime = asOfDate.AddSeconds(-10), // No activity for 10 seconds
+            CreatedAt = asOfDate
+        };
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
+
+        // Simulate making 100 requests (up to burst capacity)
+        for (var i = 0; i < 100; i++)
+        {
+            var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+            Assert.True(result);
+        }
+
+        // Act - The 101st request should be rejected
+        var resultAfterBurst = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+
+        // Assert
+        Assert.False(resultAfterBurst); // No more tokens available after burst
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Exactly(100));
     }
 }

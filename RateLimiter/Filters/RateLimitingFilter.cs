@@ -10,10 +10,11 @@ public class RateLimitingFilter(RateLimiterPolicyRegistry rateLimiterPolicyRegis
         var policyName = context.ActionDescriptor.EndpointMetadata.OfType<EnableRateLimitingAttribute>()
             .FirstOrDefault()?.PolicyName;
 
-        if (!string.IsNullOrEmpty(policyName) && rateLimiterPolicyRegistry.Policies.ContainsKey(policyName))
+        if (!string.IsNullOrEmpty(policyName) && rateLimiterPolicyRegistry.Policies.TryGetValue(policyName, out var value))
         {
-            var strategy = rateLimiterPolicyRegistry.Policies[policyName](context.HttpContext);
-            var allowed = strategy.IsRequestPermittedAsync(context.HttpContext).Result;
+            var (strategy, isGlobal) = value(context.HttpContext);
+            var key = strategy.Options.KeyGenerator(context.HttpContext);
+            var allowed = strategy.IsRequestPermittedAsync(key, DateTime.UtcNow).Result;
 
             if (!allowed)
             {

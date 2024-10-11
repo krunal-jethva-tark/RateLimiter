@@ -1,14 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
-using RateLimiter.Models;
+using RateLimiter.Stores;
 
 namespace RateLimiter.Redis;
 
 public static class StartupExtensions
 {
-    public static IServiceCollection AddTarkRedisRateLimiting(this IServiceCollection services, Action<RateLimiterPolicyRegistry> configure)
+    public static IServiceCollection AddRedisRateLimiting(this IServiceCollection services, Action<RateLimiterPolicyRegistry> configure)
     {
-        // services.AddTarkRateLimitingStores<RedisRateLimitCounterStore>(configure);
-        // TODO: add redis store in service
+        services.AddSingleton<IRateLimitCounterStore, RedisRateLimitCounterStore>();
         return services;
     }
 }

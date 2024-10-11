@@ -1,0 +1,12 @@
+﻿services:
+  servicea:
+    image: servicea
+    build:
+      context: .
+      dockerfile: ServiceA/Dockerfile
+
+  loadgenerator:
+    image: loadgenerator
+    build:
+      context: .
+      dockerfile: LoadGenerator/Dockerfile

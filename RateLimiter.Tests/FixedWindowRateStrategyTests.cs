@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Http;
 using Moq;
-using RateLimiter.KeyGenerators;
 using RateLimiter.Models;
 using RateLimiter.Stores;
 using RateLimiter.Strategies;
@@ -11,73 +9,124 @@ public class FixedWindowRateStrategyTests
 {
     private readonly Mock<IRateLimitCounterStore> _counterStoreMock;
     private readonly FixedWindowRateStrategy _strategy;
+    private readonly FixedWindowOptions _options;
+    private readonly DateTime _asOfDate;
 
     public FixedWindowRateStrategyTests()
     {
         _counterStoreMock = new Mock<IRateLimitCounterStore>();
-        var options = new FixedWindowOptions
+
+        // Set the rate limit to allow 5 requests per second
+        _options = new FixedWindowOptions
         {
-            KeyGenerator = KeyGenerator.User, // Or any other key generator you want to test
-            PermitLimit = 5, // Set the maximum requests per second
-            Window = TimeSpan.FromSeconds(1) // Set the window duration
+            PermitLimit = 5, // Allow 5 requests per window
+            Window = TimeSpan.FromSeconds(1) // 1-second window
         };
 
-        _strategy = new FixedWindowRateStrategy(_counterStoreMock.Object, options);
+        _asOfDate = DateTime.UtcNow;
+
+        _strategy = new FixedWindowRateStrategy(_counterStoreMock.Object, _options);
     }
     
     [Fact]
-    public async Task IsRequestPermittedAsync_ShouldAllowRequests_UnderLimit()
+    public async Task IsRequestPermittedAsync_ShouldPermitRequests_WithinRateLimit()
     {
         // Arrange
-        _counterStoreMock.Setup(m => m.GetRequestCountAsync(It.IsAny<string>())).ReturnsAsync(3);
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData { Count = 2, Expiration = _options.Window, CreatedAt = asOfDate };
+
+        _counterStoreMock.Setup(x => x.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(CreateHttpContext());
+        var result = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
 
         // Assert
-        Assert.True(result);
-        _counterStoreMock.Verify(m => m.IncrementRequestCountAsync(It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Once);
+        Assert.True(result); // Request is permitted since it's within the limit
+        _counterStoreMock.Verify(x => x.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
-
+    
     [Fact]
-    public async Task IsRequestPermittedAsync_ShouldRejectRequests_OverLimit()
+    public async Task IsRequestPermittedAsync_ShouldRejectRequests_WhenRateLimitExceeded()
     {
         // Arrange
-        _counterStoreMock.Setup(m => m.GetRequestCountAsync(It.IsAny<string>())).ReturnsAsync(5);
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData { Count = 5, Expiration = _options.Window, CreatedAt = asOfDate };
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(CreateHttpContext());
+        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
         Assert.False(result);
-        _counterStoreMock.Verify(m => m.IncrementRequestCountAsync(It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Never);
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Never);
     }
-
+    
     [Fact]
-    public async Task IsRequestPermittedAsync_ShouldResetCount_AfterWindow()
+    public async Task IsRequestPermittedAsync_ShouldInitializeRateLimitData_IfNotExists()
     {
         // Arrange
-        var key = "test_key";
-        _counterStoreMock.Setup(m => m.GetRequestCountAsync(It.IsAny<string>())).ReturnsAsync(5);
-         // Simulate that the count resets after the window
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync((RateLimitData)null);
 
         // Act
-        var result1 = await _strategy.IsRequestPermittedAsync(CreateHttpContext());
-        
-        _counterStoreMock.Setup(m => m.GetRequestCountAsync(It.IsAny<string>()))
-            .ReturnsAsync(0);
-        var result2 = await _strategy.IsRequestPermittedAsync(CreateHttpContext());
+        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
-        Assert.False(result1); // First request should be denied
-        Assert.True(result2); // Second request should be allowed after reset
-        _counterStoreMock.Verify(m => m.IncrementRequestCountAsync(It.IsAny<string>(), It.IsAny<TimeSpan>()), Times.Exactly(1));
+        Assert.True(result);
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
-
-    private static HttpContext CreateHttpContext()
+    
+    [Fact]
+    public async Task IsRequestPermittedAsync_ShouldHandleMultipleRequests_WithinLimit()
     {
-        var context = new DefaultHttpContext();
-        context.Request.Headers["X-Forwarded-For"] = "192.168.0.1"; // Mock IP for the key
-        return context;
+        // Arrange
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData { Count = 0, Expiration = _options.Window, CreatedAt = asOfDate };
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
+
+        // Simulate 5 requests within the rate limit
+        for (var i = 0; i < 5; i++)
+        {
+            var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+            Assert.True(result);
+        }
+
+        // Act - 6th request should be rejected
+        var exceededResult = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+
+        // Assert
+        Assert.False(exceededResult);
+        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Exactly(5));
+    }
+    
+    [Fact]
+    public async Task IsRequestPermittedAsync_ShouldRejectBurstTraffic_ExceedingLimit()
+    {
+        // Arrange
+        const string key = "test-key";
+        var asOfDate = DateTime.UtcNow;
+        var rateLimitData = new RateLimitData { Count = 4, Expiration = _options.Window, CreatedAt = asOfDate };
+
+        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
+            .ReturnsAsync(rateLimitData);
+
+        // Act - 1 more request within limit
+        var resultWithinLimit = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        var resultExceedingLimit = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+
+        // Assert
+        Assert.True(resultWithinLimit); // 5th request within limit should succeed
+        Assert.False(resultExceedingLimit); // 6th request should be rejected
     }
 }
