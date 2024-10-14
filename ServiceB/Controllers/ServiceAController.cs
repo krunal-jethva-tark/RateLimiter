@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ServiceA.Controllers;
 
 [ApiController]
-[Route("serviceA")]
+[Route("serviceB")]
 public class ServiceAController : ControllerBase
 {
     [HttpGet("hello")]

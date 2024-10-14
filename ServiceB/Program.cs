@@ -13,7 +13,7 @@ builder.Services.AddControllers();
 builder.Services.AddSingleton<IRateLimitCounterStore, InMemoryRateLimitCounterStore>();
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowPolicy("ServiceA", fixedWindowOptions =>
+    options.AddFixedWindowPolicy("ServiceB", fixedWindowOptions =>
     {
         fixedWindowOptions.PermitLimit = 20;
         fixedWindowOptions.Window = TimeSpan.FromSeconds(1);

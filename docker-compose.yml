@@ -4,3 +4,15 @@
     build:
       context: .
       dockerfile: ServiceA/Dockerfile
+
+  serviceb-1:
+    image: serviceb
+    build:
+      context: .
+      dockerfile: ServiceB/Dockerfile
+
+  servicec:
+    image: servicec
+    build:
+      context: .
+      dockerfile: ServiceC/Dockerfile
