@@ -3,9 +3,24 @@ using RateLimiter.Models;
 
 namespace RateLimiter.Stores;
 
+/// <summary>
+/// An in-memory implementation of the <see cref="IRateLimitCounterStore"/> interface.
+/// This class stores rate limiting data in a thread-safe, in-memory <see cref="ConcurrentDictionary{TKey, TValue}"/>.
+/// Data stored in-memory is lost when the application restarts, making this suitable for lightweight or single-instance applications.
+/// </summary>
 public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
 {
     private readonly ConcurrentDictionary<string, RateLimitData> _store = new();
+    
+    /// <summary>
+    /// Retrieves the rate limit data for the specified key asynchronously.
+    /// If the rate limit data has expired based on the expiration time, <c>null</c> is returned.
+    /// </summary>
+    /// <param name="key">The unique key identifying the client or entity whose rate limit data is to be retrieved.</param>
+    /// <returns>
+    /// A task representing the asynchronous operation, containing the <see cref="RateLimitData"/> for the specified key,
+    /// or <c>null</c> if no valid data exists (e.g., data has expired).
+    /// </returns>
     public Task<RateLimitData?> GetRateLimitDataAsync(string key)
     {
         if (_store.TryGetValue(key, out var rateLimitData) && rateLimitData.CreatedAt.Add(rateLimitData.Expiration) > DateTime.UtcNow)
@@ -16,6 +31,13 @@ public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
         return Task.FromResult<RateLimitData?>(null);
     }
 
+    /// <summary>
+    /// Updates the rate limit data for the specified key asynchronously.
+    /// If the key already exists in the dictionary, the existing data is updated; otherwise, a new entry is added.
+    /// </summary>
+    /// <param name="key">The unique key identifying the client or entity whose rate limit data is to be updated.</param>
+    /// <param name="data">The updated <see cref="RateLimitData"/> object containing the latest rate limiting information.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public Task UpdateRateLimitDataAsync(string key, RateLimitData data)
     {
         _store.AddOrUpdate(key, data, (existingKey, existingData) =>

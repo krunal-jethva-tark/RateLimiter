@@ -4,6 +4,7 @@ namespace RateLimiter.KeyGenerators;
 
 /// <summary>
 /// Provides methods to generate rate limiting keys based on different criteria.
+/// These keys are used to track request limits for users, IP addresses, and services.
 /// </summary>
 public static class KeyGenerator
 {

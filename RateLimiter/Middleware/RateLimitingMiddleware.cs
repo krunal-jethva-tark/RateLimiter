@@ -6,11 +6,13 @@ namespace RateLimiter.Middleware;
 
 /// <summary>
 /// Middleware that applies rate limiting strategies to incoming HTTP requests.
+/// This middleware inspects the request and enforces rate limiting based on registered policies.
 /// </summary>
 public class RateLimitingMiddleware(RequestDelegate next, RateLimiterPolicyRegistry policyRegistry)
 {
     /// <summary>
     /// Invokes the middleware to process the HTTP request.
+    /// It checks for applicable rate limiting policies and processes the request accordingly.
     /// </summary>
     /// <param name="context">The <see cref="HttpContext"/> for the current request.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
