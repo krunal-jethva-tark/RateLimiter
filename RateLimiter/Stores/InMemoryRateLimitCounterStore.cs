@@ -11,6 +11,7 @@ namespace RateLimiter.Stores;
 public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
 {
     private readonly ConcurrentDictionary<string, RateLimitData> _store = new();
+    private readonly ConcurrentDictionary<string, object> _lockStore = new();
     
     /// <summary>
     /// Retrieves the rate limit data for the specified key asynchronously.
@@ -23,12 +24,23 @@ public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
     /// </returns>
     public Task<RateLimitData?> GetRateLimitDataAsync(string key)
     {
-        if (_store.TryGetValue(key, out var rateLimitData) && rateLimitData.CreatedAt.Add(rateLimitData.Expiration) > DateTime.UtcNow)
+        // Use a lock object for the specific key
+        var lockObject = _lockStore.GetOrAdd(key, _ => new object());
+
+        RateLimitData? rateLimitData = null;
+        lock (lockObject)
         {
-            return Task.FromResult<RateLimitData?>(rateLimitData);
+            if (_store.TryGetValue(key, out var data))
+            {
+                var now = DateTime.UtcNow;
+                if (data.CreatedAt.Add(data.Expiration) > now)
+                {
+                    rateLimitData = data;
+                }
+            }
         }
         
-        return Task.FromResult<RateLimitData?>(null);
+        return Task.FromResult<RateLimitData?>(rateLimitData);
     }
 
     /// <summary>
@@ -40,15 +52,22 @@ public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
     /// <returns>A task representing the asynchronous operation.</returns>
     public Task UpdateRateLimitDataAsync(string key, RateLimitData data)
     {
-        _store.AddOrUpdate(key, data, (existingKey, existingData) =>
+        // Use a lock object for the specific key
+        var lockObject = _lockStore.GetOrAdd(key, _ => new object());
+
+        lock (lockObject)
         {
-            // Update with new data
-            existingData.Count = data.Count;
-            existingData.TokensAvailable = data.TokensAvailable;
-            existingData.LastRefillTime = data.LastRefillTime;
-            existingData.Expiration = data.Expiration;
-            return existingData;
-        });
+            _store.AddOrUpdate(key, data, (existingKey, existingData) =>
+            {
+                // Update with new data
+                existingData.Count = data.Count;
+                existingData.TokensAvailable = data.TokensAvailable;
+                existingData.LastRefillTime = data.LastRefillTime;
+                existingData.Expiration = data.Expiration;
+                existingData.CreatedAt = DateTime.UtcNow;
+                return existingData;
+            });
+        }
 
         return Task.CompletedTask;
     }
