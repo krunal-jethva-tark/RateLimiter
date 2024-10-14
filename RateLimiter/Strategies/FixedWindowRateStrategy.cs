@@ -62,19 +62,19 @@ public class FixedWindowRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
     /// </example>
     public override async Task<bool> IsRequestPermittedAsync(string key, DateTime asOfDate)
     {
-        var rateLimitData = await _counterStore.GetRateLimitDataAsync(key) ?? new RateLimitData
+        var rateLimitData = await _counterStore.GetAndUpdateRateLimitDataAsync(key, asOfDate, UpdateLogic);
+        return rateLimitData.Count <= _options.PermitLimit;
+    }
+
+    private RateLimitData UpdateLogic(RateLimitData? rateLimitData, DateTime asOfDate)
+    {
+        rateLimitData ??= new RateLimitData
         {
             Count = 0,
             Expiration = _options.Window,
             CreatedAt = asOfDate,
         };
-        if (rateLimitData.Count >= _options.PermitLimit)
-        {
-            return false;
-        }
-
         rateLimitData.Count++;
-        await _counterStore.UpdateRateLimitDataAsync(key, rateLimitData);
-        return true;
+        return rateLimitData;
     }
 }

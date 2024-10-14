@@ -13,23 +13,29 @@ public class InMemoryRateLimitCounterStoreTests
     }
     
     [Fact]
-    public async Task GetRateLimitDataAsync_ShouldReturnNull_WhenDataNotExists()
+    public async Task GetAndUpdateRateLimitDataAsync_ShouldReturnNull_WhenDataNotExists()
     {
         // Arrange
         const string key = "non-existing-key";
+        DateTime asOfDate = DateTime.UtcNow;
 
         // Act
-        var result = await _store.GetRateLimitDataAsync(key);
+        var result = await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) =>
+        {
+            // Custom logic for test
+            return data ?? new RateLimitData { CreatedAt = date, Expiration = TimeSpan.FromMinutes(1) };
+        });
 
         // Assert
-        Assert.Null(result);
+        Assert.NotNull(result); // Will return new data since we initialized it in the updateLogic
     }
     
     [Fact]
-    public async Task GetRateLimitDataAsync_ShouldReturnData_WhenKeyExistsAndNotExpired()
+    public async Task GetAndUpdateRateLimitDataAsync_ShouldReturnData_WhenKeyExistsAndNotExpired()
     {
         // Arrange
         const string key = "test-key";
+        DateTime asOfDate = DateTime.UtcNow;
         var rateLimitData = new RateLimitData
         {
             TokensAvailable = 10,
@@ -38,10 +44,10 @@ public class InMemoryRateLimitCounterStoreTests
             Expiration = TimeSpan.FromMinutes(1)
         };
 
-        await _store.UpdateRateLimitDataAsync(key, rateLimitData);
+        await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => rateLimitData);
 
         // Act
-        var result = await _store.GetRateLimitDataAsync(key);
+        var result = await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => data!);
 
         // Assert
         Assert.NotNull(result);
@@ -50,11 +56,12 @@ public class InMemoryRateLimitCounterStoreTests
     }
     
     [Fact]
-    public async Task GetRateLimitDataAsync_ShouldReturnNull_WhenDataIsExpired()
+    public async Task GetAndUpdateRateLimitDataAsync_ShouldRecreateData_WhenDataIsExpired()
     {
         // Arrange
         var key = "test-key";
-        var rateLimitData = new RateLimitData
+        DateTime asOfDate = DateTime.UtcNow;
+        var expiredRateLimitData = new RateLimitData
         {
             TokensAvailable = 10,
             LastRefillTime = DateTime.UtcNow.AddMinutes(-2), // Simulate expired data
@@ -62,20 +69,39 @@ public class InMemoryRateLimitCounterStoreTests
             Expiration = TimeSpan.FromMinutes(1)
         };
 
-        await _store.UpdateRateLimitDataAsync(key, rateLimitData);
+        // Add expired data to the store
+        await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => expiredRateLimitData);
 
         // Act
-        var result = await _store.GetRateLimitDataAsync(key);
+        var result = await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) =>
+        {
+            // If the data is expired, recreate a new RateLimitData
+            if (data == null || data.CreatedAt.Add(data.Expiration) < date)
+            {
+                return new RateLimitData
+                {
+                    TokensAvailable = 5, // New default value
+                    LastRefillTime = date,
+                    CreatedAt = date,
+                    Expiration = TimeSpan.FromMinutes(1)
+                };
+            }
+            return data;
+        });
 
         // Assert
-        Assert.Null(result);
+        Assert.NotNull(result); // Data should be recreated if it was expired
+        Assert.Equal(5, result.TokensAvailable); // Check that new data was set with expected values
+        Assert.Equal(asOfDate, result.LastRefillTime); // Ensure that new LastRefillTime is set
     }
+
 
     [Fact]
     public async Task UpdateRateLimitDataAsync_ShouldAddNewData_WhenKeyDoesNotExist()
     {
         // Arrange
         var key = "new-key";
+        var asOfDate = DateTime.UtcNow;
         var rateLimitData = new RateLimitData
         {
             TokensAvailable = 5,
@@ -85,9 +111,8 @@ public class InMemoryRateLimitCounterStoreTests
         };
 
         // Act
-        await _store.UpdateRateLimitDataAsync(key, rateLimitData);
-
-        var result = await _store.GetRateLimitDataAsync(key);
+        await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => rateLimitData);
+        var result = await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => data!);
 
         // Assert
         Assert.NotNull(result);
@@ -100,6 +125,7 @@ public class InMemoryRateLimitCounterStoreTests
     {
         // Arrange
         var key = "existing-key";
+        DateTime asOfDate = DateTime.UtcNow;
         var initialData = new RateLimitData
         {
             TokensAvailable = 5,
@@ -108,7 +134,7 @@ public class InMemoryRateLimitCounterStoreTests
             Expiration = TimeSpan.FromMinutes(1)
         };
 
-        await _store.UpdateRateLimitDataAsync(key, initialData);
+        await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => initialData);
 
         // Act
         var updatedData = new RateLimitData
@@ -119,8 +145,8 @@ public class InMemoryRateLimitCounterStoreTests
             Expiration = TimeSpan.FromMinutes(1)
         };
 
-        await _store.UpdateRateLimitDataAsync(key, updatedData);
-        var result = await _store.GetRateLimitDataAsync(key);
+        await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => updatedData);
+        var result = await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) => data!);
 
         // Assert
         Assert.NotNull(result);

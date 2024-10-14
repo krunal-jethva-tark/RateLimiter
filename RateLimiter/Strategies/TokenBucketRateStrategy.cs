@@ -64,24 +64,23 @@ public class TokenBucketRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
     public override async Task<bool> IsRequestPermittedAsync(string key, DateTime asOfDate)
     {
 
-        var rateLimitData = await _counterStore.GetRateLimitDataAsync(key) ?? new RateLimitData
-        {
+        var rateLimitData = await _counterStore.GetAndUpdateRateLimitDataAsync(key, asOfDate, UpdateLogic);
+
+        return rateLimitData.TokensAvailable >= 0;
+    }
+
+    private RateLimitData UpdateLogic(RateLimitData? rateLimitData, DateTime asOfDate)
+    {
+        rateLimitData ??= new RateLimitData {
             TokensAvailable = _options.BurstCapacity,
             LastRefillTime = asOfDate,
             CreatedAt = asOfDate,
         };
+        
         var elapsedTime = asOfDate - rateLimitData.LastRefillTime;
         var tokensToAdd = (int)(elapsedTime.TotalSeconds * _options.MaxRequestsPerSecond);
-        rateLimitData.TokensAvailable = Math.Min(rateLimitData.TokensAvailable + tokensToAdd, _options.BurstCapacity);
-
-        if (rateLimitData.TokensAvailable > 0)
-        {
-            rateLimitData.TokensAvailable--;
-            rateLimitData.LastRefillTime = asOfDate;
-            await _counterStore.UpdateRateLimitDataAsync(key, rateLimitData);
-            return true; // Request allowed
-        }
-
-        return false; // Request denied
+        rateLimitData.TokensAvailable = Math.Min(rateLimitData.TokensAvailable + tokensToAdd, _options.BurstCapacity) - 1;
+        rateLimitData.LastRefillTime = asOfDate;
+        return rateLimitData;
     }
 }

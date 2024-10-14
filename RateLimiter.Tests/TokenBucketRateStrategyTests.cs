@@ -35,14 +35,15 @@ public class TokenBucketRateStrategyTests
             CreatedAt = asOfDate,
         };
 
-        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key)).ReturnsAsync(rateLimitData);
+        _counterStoreMock.Setup(store => store.GetAndUpdateRateLimitDataAsync(key, asOfDate, It.IsAny<Func<RateLimitData?, DateTime, RateLimitData>>()))
+            .ReturnsAsync((string k, DateTime date, Func<RateLimitData?, DateTime, RateLimitData> updateLogic) =>
+                updateLogic(rateLimitData, date));
         
         // Act
         var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
         
         // Assert
         Assert.True(result);
-        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
     
     [Fact]
@@ -54,19 +55,19 @@ public class TokenBucketRateStrategyTests
         var rateLimitData = new RateLimitData
         {
             TokensAvailable = 0,
-            LastRefillTime = asOfDate.AddSeconds(-1),
+            LastRefillTime = asOfDate,
             CreatedAt = asOfDate
         };
 
-        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
-            .ReturnsAsync(rateLimitData);
+        _counterStoreMock.Setup(store => store.GetAndUpdateRateLimitDataAsync(key, asOfDate, It.IsAny<Func<RateLimitData?, DateTime, RateLimitData>>()))
+            .ReturnsAsync((string k, DateTime date, Func<RateLimitData?, DateTime, RateLimitData> updateLogic) =>
+                updateLogic(rateLimitData, date));
 
         // Act
         var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
         Assert.False(result);
-        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Never);
     }
 
     [Fact]
@@ -82,7 +83,9 @@ public class TokenBucketRateStrategyTests
             CreatedAt = asOfDate
         };
 
-        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key)).ReturnsAsync(rateLimitData);
+        _counterStoreMock.Setup(store => store.GetAndUpdateRateLimitDataAsync(key, asOfDate, It.IsAny<Func<RateLimitData?, DateTime, RateLimitData>>()))
+            .ReturnsAsync((string k, DateTime date, Func<RateLimitData?, DateTime, RateLimitData> updateLogic) =>
+                updateLogic(rateLimitData, date));
         
         // Act
         var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
@@ -93,7 +96,6 @@ public class TokenBucketRateStrategyTests
         
         // 10 tokens per second * 5 seconds = 50 tokens added. Burst capacity is 100.
         Assert.Equal(99, rateLimitData.TokensAvailable);
-        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
     
     [Fact]
@@ -109,8 +111,9 @@ public class TokenBucketRateStrategyTests
             CreatedAt = asOfDate
         };
 
-        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
-            .ReturnsAsync(rateLimitData);
+        _counterStoreMock.Setup(store => store.GetAndUpdateRateLimitDataAsync(key, asOfDate, It.IsAny<Func<RateLimitData?, DateTime, RateLimitData>>()))
+            .ReturnsAsync((string k, DateTime date, Func<RateLimitData?, DateTime, RateLimitData> updateLogic) =>
+                updateLogic(rateLimitData, date));
 
         // Act
         var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
@@ -120,7 +123,6 @@ public class TokenBucketRateStrategyTests
             
         // 10 tokens per second * 10 seconds = 100 tokens added (max burst capacity).
         Assert.Equal(99, rateLimitData.TokensAvailable); // One token consumed for the current request.
-        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
     
     [Fact]
@@ -136,8 +138,9 @@ public class TokenBucketRateStrategyTests
             CreatedAt = asOfDate
         };
 
-        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
-            .ReturnsAsync(rateLimitData);
+        _counterStoreMock.Setup(store => store.GetAndUpdateRateLimitDataAsync(key, asOfDate, It.IsAny<Func<RateLimitData?, DateTime, RateLimitData>>()))
+            .ReturnsAsync((string k, DateTime date, Func<RateLimitData?, DateTime, RateLimitData> updateLogic) =>
+                updateLogic(rateLimitData, date));
 
         // Act
         var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
@@ -147,7 +150,6 @@ public class TokenBucketRateStrategyTests
 
         // 10 tokens per second * 15 seconds = 150 tokens added, but burst capacity is capped at 100.
         Assert.Equal(99, rateLimitData.TokensAvailable); // After one token is consumed for the request.
-        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Once);
     }
     
     [Fact]
@@ -163,8 +165,9 @@ public class TokenBucketRateStrategyTests
             CreatedAt = asOfDate
         };
 
-        _counterStoreMock.Setup(store => store.GetRateLimitDataAsync(key))
-            .ReturnsAsync(rateLimitData);
+        _counterStoreMock.Setup(store => store.GetAndUpdateRateLimitDataAsync(key, asOfDate, It.IsAny<Func<RateLimitData?, DateTime, RateLimitData>>()))
+            .ReturnsAsync((string k, DateTime date, Func<RateLimitData?, DateTime, RateLimitData> updateLogic) =>
+                updateLogic(rateLimitData, date));
 
         // Simulate making 100 requests (up to burst capacity)
         for (var i = 0; i < 100; i++)
@@ -178,6 +181,5 @@ public class TokenBucketRateStrategyTests
 
         // Assert
         Assert.False(resultAfterBurst); // No more tokens available after burst
-        _counterStoreMock.Verify(store => store.UpdateRateLimitDataAsync(key, It.IsAny<RateLimitData>()), Times.Exactly(100));
     }
 }

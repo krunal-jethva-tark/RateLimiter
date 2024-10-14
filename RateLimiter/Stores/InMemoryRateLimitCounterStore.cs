@@ -12,63 +12,49 @@ public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
 {
     private readonly ConcurrentDictionary<string, RateLimitData> _store = new();
     private readonly ConcurrentDictionary<string, object> _lockStore = new();
-    
+
     /// <summary>
-    /// Retrieves the rate limit data for the specified key asynchronously.
-    /// If the rate limit data has expired based on the expiration time, <c>null</c> is returned.
+    /// Retrieves and updates the rate limit data for a specified key asynchronously with distributed locking.
+    /// This method allows for injecting custom logic to modify the rate limit data and then updates the data in Redis.
     /// </summary>
-    /// <param name="key">The unique key identifying the client or entity whose rate limit data is to be retrieved.</param>
-    /// <returns>
-    /// A task representing the asynchronous operation, containing the <see cref="RateLimitData"/> for the specified key,
-    /// or <c>null</c> if no valid data exists (e.g., data has expired).
-    /// </returns>
-    public Task<RateLimitData?> GetRateLimitDataAsync(string key)
+    /// <param name="key">The key for which to retrieve and update the rate limit data.</param>
+    /// <param name="asOfDate">The current date and time when the request is made, used to determine the active window period.</param>
+    /// <param name="updateLogic">A function that takes the current rate limit data and returns the updated data.</param>
+    /// <returns>A task representing the asynchronous operation, containing the updated <see cref="RateLimitData"/>.</returns>
+    public Task<RateLimitData> GetAndUpdateRateLimitDataAsync(string key, DateTime asOfDate,
+        Func<RateLimitData?, DateTime, RateLimitData> updateLogic)
     {
         // Use a lock object for the specific key
         var lockObject = _lockStore.GetOrAdd(key, _ => new object());
-
-        RateLimitData? rateLimitData = null;
         lock (lockObject)
         {
+            RateLimitData? rateLimitData = null;
+            var now = DateTime.UtcNow;
             if (_store.TryGetValue(key, out var data))
             {
-                var now = DateTime.UtcNow;
-                if (data.CreatedAt.Add(data.Expiration) > now)
+                Console.WriteLine($"ratelimitData -- count: {data.Count} asOfDate: {asOfDate} createdAt: {data.CreatedAt} expiration: {data.Expiration}");
+                if (data.CreatedAt.Add(data.Expiration) > asOfDate)
                 {
+                    
+                    Console.WriteLine($"use existing data calulatedDate: {data.CreatedAt.Add(data.Expiration)}");
                     rateLimitData = data;
                 }
             }
-        }
-        
-        return Task.FromResult<RateLimitData?>(rateLimitData);
-    }
 
-    /// <summary>
-    /// Updates the rate limit data for the specified key asynchronously.
-    /// If the key already exists in the dictionary, the existing data is updated; otherwise, a new entry is added.
-    /// </summary>
-    /// <param name="key">The unique key identifying the client or entity whose rate limit data is to be updated.</param>
-    /// <param name="data">The updated <see cref="RateLimitData"/> object containing the latest rate limiting information.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public Task UpdateRateLimitDataAsync(string key, RateLimitData data)
-    {
-        // Use a lock object for the specific key
-        var lockObject = _lockStore.GetOrAdd(key, _ => new object());
-
-        lock (lockObject)
-        {
-            _store.AddOrUpdate(key, data, (existingKey, existingData) =>
+            rateLimitData = updateLogic(rateLimitData, asOfDate);
+            _store.AddOrUpdate(key, rateLimitData, (_, existingData) =>
             {
                 // Update with new data
-                existingData.Count = data.Count;
-                existingData.TokensAvailable = data.TokensAvailable;
-                existingData.LastRefillTime = data.LastRefillTime;
-                existingData.Expiration = data.Expiration;
-                existingData.CreatedAt = DateTime.UtcNow;
+                existingData.Count = rateLimitData.Count;
+                existingData.TokensAvailable = rateLimitData.TokensAvailable;
+                existingData.LastRefillTime = rateLimitData.LastRefillTime;
+                existingData.Expiration = rateLimitData.Expiration;
+                existingData.CreatedAt = rateLimitData.CreatedAt;
                 return existingData;
             });
-        }
 
-        return Task.CompletedTask;
+
+            return Task.FromResult(rateLimitData);
+        }
     }
 }
