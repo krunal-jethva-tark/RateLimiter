@@ -68,6 +68,7 @@ public class FixedWindowRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
 
     private RateLimitData UpdateLogic(RateLimitData? rateLimitData, DateTime asOfDate)
     {
+        //TODO: Use constructor rather than on the fly object initialization
         rateLimitData ??= new RateLimitData
         {
             Count = 0,

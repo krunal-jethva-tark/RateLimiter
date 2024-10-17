@@ -1,3 +1,4 @@
+using Prometheus;
 using RateLimiter;
 using RateLimiter.Middleware;
 using RateLimiter.Stores;
@@ -17,6 +18,7 @@ builder.Services.AddRateLimiter(options =>
     {
         fixedWindowOptions.PermitLimit = 20;
         fixedWindowOptions.Window = TimeSpan.FromSeconds(1);
+        fixedWindowOptions.KeyGenerator = context => context.Request.Headers["User-Identity"].ToString() ??  $"anonymous";
     }, true);
 });
 
@@ -28,6 +30,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMetricServer();
+app.UseHttpMetrics();
 
 app.UseMiddleware<RateLimitingMiddleware>();
 

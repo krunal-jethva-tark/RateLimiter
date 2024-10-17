@@ -13,7 +13,9 @@ public class RedisRateLimitCounterStore(IConnectionMultiplexer redisConnection) 
 {
     private readonly IDatabase _redisDatabase = redisConnection.GetDatabase();
     private const string LockSuffix = ":lock";
+    private readonly TimeSpan _lockExpiry = TimeSpan.FromSeconds(10);
     private readonly TimeSpan _lockTimeout = TimeSpan.FromSeconds(5);
+    private readonly TimeSpan _retryDelay = TimeSpan.FromMilliseconds(200);
 
     /// <summary>
     /// Retrieves and updates the rate limit data for a specified key asynchronously with distributed locking.
@@ -26,16 +28,27 @@ public class RedisRateLimitCounterStore(IConnectionMultiplexer redisConnection) 
     public async Task<RateLimitData> GetAndUpdateRateLimitDataAsync(string key, DateTime asOfDate,
         Func<RateLimitData?, DateTime, RateLimitData> updateLogic)
     {
-        var lockKey = key + LockSuffix;
+        var lockKey = $"{key}{LockSuffix}";
         var lockValue = Guid.NewGuid().ToString();
-
-        if (!await _redisDatabase.StringSetAsync(lockKey, lockValue, _lockTimeout, When.NotExists))
-        {
-            return new RateLimitData{ CreatedAt = DateTime.UtcNow, Count = int.MaxValue };
-        }
-
+        bool lockAcquired = false;
+        var startTime = DateTime.UtcNow;
         try
         {
+            while (!lockAcquired)
+            {
+                lockAcquired = await _redisDatabase.LockTakeAsync(lockKey, lockValue, _lockExpiry);
+                if (lockAcquired)
+                    break; // Lock acquired, exit loop
+
+                if (DateTime.UtcNow - startTime > _lockExpiry)
+                {
+                    throw new Exception($"Could not acquire lock for key: {key} after waiting {_lockTimeout.TotalSeconds} seconds.");
+                }
+                
+                // wait before trying again
+                await Task.Delay(_retryDelay);
+            }
+            
             var data = await _redisDatabase.StringGetAsync(key);
             var rateLimitData = data.IsNullOrEmpty ? null : JsonConvert.DeserializeObject<RateLimitData>(data);
 
@@ -52,9 +65,9 @@ public class RedisRateLimitCounterStore(IConnectionMultiplexer redisConnection) 
         finally
         {
             // Release the lock if we still hold it
-            if (await _redisDatabase.StringGetAsync(lockKey) == lockValue)
+            if (lockAcquired)
             {
-                await _redisDatabase.KeyDeleteAsync(lockKey);
+                await _redisDatabase.LockReleaseAsync(lockKey, lockValue);
             }
         }
     }

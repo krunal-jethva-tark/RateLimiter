@@ -11,4 +11,7 @@ public class ServiceAController : ControllerBase
 
     [HttpGet("ping")]
     public IActionResult Ping() => Ok("Ping from Service A!");
+
+    [HttpGet("echo")]
+    public IActionResult Echo() => Ok();
 }
