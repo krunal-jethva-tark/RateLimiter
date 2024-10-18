@@ -23,6 +23,12 @@ builder.Services.AddRateLimiter(options =>
         fixedWindowOptions.KeyGenerator = context => context.Request.Headers["User-Identity"].ToString() ??  $"anonymous";
     })
     .MarkAsDefault();
+
+    options.AddFixedWindowPolicy("ServiceAAttribute", windowOptions =>
+    {
+        windowOptions.PermitLimit = 5;
+        windowOptions.Window = TimeSpan.FromSeconds(1);
+    });
 });
 
 var app = builder.Build();
