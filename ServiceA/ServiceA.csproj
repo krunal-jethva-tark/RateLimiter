@@ -21,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\RateLimiter.Redis\RateLimiter.Redis.csproj" />
       <ProjectReference Include="..\RateLimiter\RateLimiter.csproj" />
     </ItemGroup>
 

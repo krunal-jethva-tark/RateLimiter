@@ -11,6 +11,12 @@ namespace RateLimiter;
 public class RateLimiterPolicyRegistry
 {
     /// <summary>
+    /// Gets or sets the default rate limiting policy. This policy will be applied if no specific policy is specified.
+    /// </summary>
+    public Func<HttpContext, RateLimiterStrategyBase<RateLimiterStrategyOptions>>? DefaultPolicy { get; private set; }
+    
+    private string? _lastRegisteredPolicy; // Track the last registered policy
+    /// <summary>
     /// A dictionary that holds all the registered rate limiting policies.
     /// Each entry in the dictionary maps a policy name to its corresponding strategy factory.
     /// </summary>
@@ -18,7 +24,7 @@ public class RateLimiterPolicyRegistry
     /// The <see cref="Policies"/> dictionary ensures that each policy is identified by a unique name.
     /// The strategy factory is used to create instances of rate limiting strategies based on the current HTTP request context.
     /// </remarks>
-    public Dictionary<string, RateLimiterStrategyFactory> Policies { get; } = new();
+    private Dictionary<string, Func<HttpContext, RateLimiterStrategyBase<RateLimiterStrategyOptions>>> Policies { get; } = new();
 
     /// <summary>
     /// Registers a new rate limiting policy in the registry. The policy is associated with a name and a strategy factory.
@@ -29,7 +35,7 @@ public class RateLimiterPolicyRegistry
     /// This name is used to reference the policy when applying it to different API endpoints or parts of the application.
     /// </param>
     /// <param name="strategyFactory">
-    /// A delegate that provides a factory method for creating rate limiting strategies based on the current <see cref="HttpContext"/>.
+    /// An instance of <see cref="RateLimiterStrategyBase{TOptions}"/> representing the rate limiter strategy for the specified policy.
     /// The strategy defines how requests are throttled or allowed based on policy settings.
     /// </param>
     /// <exception cref="InvalidOperationException">
@@ -38,20 +44,21 @@ public class RateLimiterPolicyRegistry
     /// <example>
     /// Example usage:
     /// <code>
-    /// registry.RegisterPolicy("MyPolicy", context =>
+    /// registry.RegisterPolicy("MyFixedWindowPolicy", context =>
     /// {
     ///     var counterStore = (IRateLimitCounterStore)context.RequestServices.GetService(typeof(IRateLimitCounterStore))!;
     ///     var strategy = new FixedWindowRateStrategy(counterStore, new FixedWindowOptions());
-    ///     return (strategy, false);
+    ///     return strategy;
     /// });
     /// </code>
     /// </example>
-    public void RegisterPolicy(string policyName, RateLimiterStrategyFactory strategyFactory)
+    public void RegisterPolicy(string policyName, Func<HttpContext, RateLimiterStrategyBase<RateLimiterStrategyOptions>> strategyFactory)
     {
         if (!Policies.TryAdd(policyName, strategyFactory))
         {
             throw new InvalidOperationException($"A policy with the name '{policyName}' already exists.");
         }
+        _lastRegisteredPolicy = policyName;
     }
 
     /// <summary>
@@ -61,37 +68,39 @@ public class RateLimiterPolicyRegistry
     /// The name of the policy to retrieve.
     /// </param>
     /// <returns>
-    /// A <see cref="RateLimiterStrategyFactory"/> delegate that creates the rate limiter strategy for the specified policy.
+    /// An instance of <see cref="RateLimiterStrategyBase{TOptions}"/> representing the rate limiter strategy for the specified policy.
     /// Returns <c>null</c> if no policy with the specified name exists.
     /// </returns>
     /// <example>
     /// Example usage:
     /// <code>
-    /// var strategyFactory = registry.GetPolicy("MyPolicy");
-    /// if (strategyFactory != null)
+    /// var strategy = registry.GetPolicy("MyPolicy");
+    /// if (strategy != null)
     /// {
-    ///     var (strategy, isGlobal) = strategyFactory(context);
     ///     // Apply the strategy
     /// }
     /// </code>
     /// </example>
-    public RateLimiterStrategyFactory? GetPolicy(string policyName)
+    public Func<HttpContext, RateLimiterStrategyBase<RateLimiterStrategyOptions>>? GetPolicy(string policyName)
     {
         Policies.TryGetValue(policyName, out var value);
         return value;
     }
-}
 
-/// <summary>
-/// Represents a factory method that returns a rate limiting strategy and a flag indicating
-/// whether the strategy is global, based on the provided <see cref="HttpContext"/>.
-/// </summary>
-/// <param name="context">
-/// The <see cref="HttpContext"/> of the current request, used to create the appropriate rate limiter strategy.
-/// </param>
-/// <returns>
-/// A tuple where the first value is an instance of a rate limiting strategy derived from 
-/// <see cref="RateLimiterStrategyBase{TOptions}"/> and the second value is a boolean indicating
-/// whether the policy is applied globally across all endpoints.
-/// </returns>
-public delegate (RateLimiterStrategyBase<RateLimiterStrategyOptions> strategy, bool IsGlobal) RateLimiterStrategyFactory(HttpContext context);
+    /// <summary>
+    /// Marks the last registered rate limiting policy as the default policy.
+    /// This method sets the default policy for the rate limiter, which will be used if no specific policy is specified.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if no policy has been registered yet.
+    /// </exception>
+    public void SetDefaultPolicy()
+    {
+        if (_lastRegisteredPolicy == null)
+        {
+            throw new InvalidOperationException("No policy has been registered yet.");
+        }
+
+        DefaultPolicy = Policies[_lastRegisteredPolicy];
+    }
+}

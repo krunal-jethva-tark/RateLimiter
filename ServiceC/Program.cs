@@ -17,7 +17,7 @@ builder.Services.AddRateLimiter(options =>
     {
         fixedWindowOptions.PermitLimit = 20;
         fixedWindowOptions.Window = TimeSpan.FromSeconds(1);
-    }, true);
+    });
 });
 
 var app = builder.Build();

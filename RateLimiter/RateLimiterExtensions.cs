@@ -25,10 +25,6 @@ public static class RateLimiterExtensions
     /// A delegate used to configure the options for the Fixed Window policy, including window size and request limits.
     /// For example, setting a window of 1 minute and a request limit of 100 allows up to 100 requests per minute.
     /// </param>
-    /// <param name="isGlobal">
-    /// A boolean value indicating whether the policy should be applied globally across all API endpoints.
-    /// If true, the policy is applied as a middleware to all endpoints.
-    /// </param>
     /// <example>
     /// Example usage:
     /// <code>
@@ -36,19 +32,22 @@ public static class RateLimiterExtensions
     /// {
     ///     options.WindowSize = TimeSpan.FromMinutes(1);
     ///     options.RequestLimit = 100;
-    /// }, isGlobal: true);
+    /// });
     /// </code>
     /// </example>
-    public static void AddFixedWindowPolicy(this RateLimiterPolicyRegistry registry, string policyName, Action<FixedWindowOptions> configure, bool isGlobal = false)
+    /// <returns>
+    /// The <see cref="RateLimiterPolicyRegistry"/> instance for further chaining.
+    /// </returns>
+    public static RateLimiterPolicyRegistry AddFixedWindowPolicy(this RateLimiterPolicyRegistry registry, string policyName, Action<FixedWindowOptions> configure)
     {
         var options = new FixedWindowOptions();
         configure(options);
         registry.RegisterPolicy(policyName, context =>
         {
             var counterStore = (IRateLimitCounterStore)context.RequestServices.GetService(typeof(IRateLimitCounterStore))!;
-            var strategy = new FixedWindowRateStrategy(counterStore, options);
-            return (strategy, isGlobal);
+            return new FixedWindowRateStrategy(counterStore, options);
         });
+        return registry;
     }
 
     /// <summary>
@@ -67,10 +66,6 @@ public static class RateLimiterExtensions
     /// For instance, setting a token limit of 200 and a refill rate of 5 tokens per second
     /// allows a burst of up to 200 requests, refilling at 5 requests per second.
     /// </param>
-    /// <param name="isGlobal">
-    /// A boolean value indicating whether the policy should be applied globally across all API endpoints.
-    /// If true, the policy is applied as a middleware to all endpoints.
-    /// </param>
     /// <example>
     /// Example usage:
     /// <code>
@@ -79,10 +74,13 @@ public static class RateLimiterExtensions
     ///     options.TokenLimit = 200;
     ///     options.RefillInterval = TimeSpan.FromSeconds(1);
     ///     options.RefillAmount = 5;
-    /// }, isGlobal: false);
+    /// });
     /// </code>
     /// </example>
-    public static void AddTokenBucketPolicy(this RateLimiterPolicyRegistry registry, string policyName, Action<TokenBucketOptions> configure, bool isGlobal = false)
+    /// <returns>
+    /// The <see cref="RateLimiterPolicyRegistry"/> instance for further chaining.
+    /// </returns>
+    public static RateLimiterPolicyRegistry AddTokenBucketPolicy(this RateLimiterPolicyRegistry registry, string policyName, Action<TokenBucketOptions> configure)
     {
         var options = new TokenBucketOptions();
         configure(options);
@@ -90,8 +88,24 @@ public static class RateLimiterExtensions
         registry.RegisterPolicy(policyName, context =>
         {
             var counterStore = (IRateLimitCounterStore)context.RequestServices.GetService(typeof(IRateLimitCounterStore))!;
-            var strategy = new TokenBucketRateStrategy(counterStore, options);
-            return (strategy, isGlobal);
+            return new TokenBucketRateStrategy(counterStore, options);
         });
+        return registry;
+    }
+    
+    /// <summary>
+    /// Marks the last registered rate limiting policy as the default policy.
+    /// This method sets the default policy for the rate limiter, which will be used if no specific policy is specified.
+    /// </summary>
+    /// <param name="registry">
+    /// The <see cref="RateLimiterPolicyRegistry"/> where the default policy will be set.
+    /// </param>
+    /// <returns>
+    /// The <see cref="RateLimiterPolicyRegistry"/> instance for further chaining.
+    /// </returns>
+    public static RateLimiterPolicyRegistry MarkAsDefault(this RateLimiterPolicyRegistry registry)
+    {
+        registry.SetDefaultPolicy(); // Set the last registered policy as default
+        return registry; // Return registry for further chaining
     }
 }

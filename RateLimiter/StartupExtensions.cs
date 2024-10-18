@@ -35,7 +35,7 @@ public static class StartupExtensions
     ///     {
     ///         options.WindowSize = TimeSpan.FromMinutes(1);
     ///         options.RequestLimit = 100;
-    ///     }, isGlobal: true);
+    ///     });
     /// });
     /// </code>
     /// </example>

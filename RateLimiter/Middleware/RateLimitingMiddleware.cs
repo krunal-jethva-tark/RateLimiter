@@ -70,23 +70,18 @@ public class RateLimitingMiddleware
         var policyFactory = _policyRegistry.GetPolicy(policyName);
         if (policyFactory == null) return false;
 
-        var (strategy, _) = policyFactory(context);
+        var strategy = policyFactory(context);
         return await ExecuteRateLimitingStrategy(context, strategy);
     }
 
     private async Task<bool> ProcessGlobalPolicies(HttpContext context)
     {
-        foreach (var policy in _policyRegistry.Policies)
+        var defaultPolicy = _policyRegistry.DefaultPolicy;
+        if (defaultPolicy is not null)
         {
-            var (strategy, isGlobal) = policy.Value(context);
-            if (isGlobal && await ExecuteRateLimitingStrategy(context, strategy))
-            {
-                return true;
-            }
+            return await ExecuteRateLimitingStrategy(context, defaultPolicy(context));
         }
-
-        await RejectRequest(context);
-        return false;
+        return true;
     }
     
     private async Task<bool> ExecuteRateLimitingStrategy(HttpContext context, RateLimiterStrategyBase<RateLimiterStrategyOptions> strategy)

@@ -1,6 +1,7 @@
 using Prometheus;
 using RateLimiter;
 using RateLimiter.Middleware;
+using RateLimiter.Redis;
 using RateLimiter.Stores;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,7 +12,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
-builder.Services.AddSingleton<IRateLimitCounterStore, InMemoryRateLimitCounterStore>();
+// builder.Services.AddSingleton<IRateLimitCounterStore, InMemoryRateLimitCounterStore>();
+builder.Services.AddRedisRateLimiting("localhost:6379");
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowPolicy("ServiceA", fixedWindowOptions =>
@@ -19,7 +21,8 @@ builder.Services.AddRateLimiter(options =>
         fixedWindowOptions.PermitLimit = 20;
         fixedWindowOptions.Window = TimeSpan.FromSeconds(1);
         fixedWindowOptions.KeyGenerator = context => context.Request.Headers["User-Identity"].ToString() ??  $"anonymous";
-    }, true);
+    })
+    .MarkAsDefault();
 });
 
 var app = builder.Build();
