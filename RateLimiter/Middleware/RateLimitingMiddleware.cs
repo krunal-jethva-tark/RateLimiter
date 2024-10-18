@@ -61,7 +61,7 @@ public class RateLimitingMiddleware
     private static string? GetRateLimitingPolicyName(HttpContext context)
     {
         var endpoint = context.Features.Get<IEndpointFeature>()?.Endpoint;
-        var rateLimitingAttr = endpoint?.Metadata.GetMetadata<EnableRateLimitingAttribute>();
+        var rateLimitingAttr = endpoint?.Metadata.GetMetadata<EnableRateLimiting>();
         return rateLimitingAttr?.PolicyName;
     }
 

@@ -6,7 +6,7 @@ namespace RateLimiter.Filters;
 /// An abstract attribute that enables rate limiting on resource actions.
 /// This attribute can be used to specify a rate limiting policy name for the action it decorates.
 /// </summary>
-public abstract class EnableRateLimitingAttribute(string? policyName) : Attribute, IResourceFilter
+public sealed class EnableRateLimiting(string? policyName) : Attribute, IResourceFilter
 {
     /// <summary>
     /// Gets the name of the rate limiting policy to apply.
