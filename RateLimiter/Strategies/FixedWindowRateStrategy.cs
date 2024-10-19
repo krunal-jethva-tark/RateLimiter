@@ -4,8 +4,8 @@ using RateLimiter.Stores;
 namespace RateLimiter.Strategies;
 
 /// <summary>
-/// Implements the fixed window rate limiting strategy, where the request count is reset 
-/// at the start of each fixed time window. This strategy allows a fixed number of requests 
+/// Implements the fixed window rate limiting strategy, where the request count is reset
+/// at the start of each fixed time window. This strategy allows a fixed number of requests
 /// within a specified window period.
 /// </summary>
 public class FixedWindowRateStrategy : RateLimiterStrategyBase<RateLimiterStrategyOptions>
@@ -21,7 +21,7 @@ public class FixedWindowRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
     /// Typically backed by in-memory, distributed cache, or a database.
     /// </param>
     /// <param name="options">
-    /// The <see cref="FixedWindowOptions"/> used for configuring the fixed window rate limiting strategy. 
+    /// The <see cref="FixedWindowOptions"/> used for configuring the fixed window rate limiting strategy.
     /// These options include the window size (time period) and the maximum number of permitted requests within that period.
     /// </param>
     public FixedWindowRateStrategy(IRateLimitCounterStore counterStore, FixedWindowOptions options)
@@ -43,7 +43,7 @@ public class FixedWindowRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
     /// The current date and time when the request is made, used to determine the active window period.
     /// </param>
     /// <returns>
-    /// A task that represents the asynchronous operation, containing a boolean value indicating 
+    /// A task that represents the asynchronous operation, containing a boolean value indicating
     /// whether the request is permitted (<c>true</c>) or rejected (<c>false</c>) based on the rate limit.
     /// </returns>
     /// <example>
@@ -68,7 +68,6 @@ public class FixedWindowRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
 
     private RateLimitData UpdateLogic(RateLimitData? rateLimitData, DateTime asOfDate)
     {
-        //TODO: Use constructor rather than on the fly object initialization
         rateLimitData ??= new RateLimitData
         {
             Count = 0,

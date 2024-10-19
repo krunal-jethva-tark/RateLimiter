@@ -1,7 +1,7 @@
 namespace RateLimiter.Models;
 
 /// <summary>
-/// Options for configuring a fixed window rate limiting strategy.
+/// Represents the options for configuring a fixed window rate limiting strategy.
 /// This class contains properties that define the limits and time windows for the fixed window strategy.
 /// </summary>
 public class FixedWindowOptions : RateLimiterStrategyOptions

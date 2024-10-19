@@ -8,7 +8,7 @@ namespace RateLimiter.Stores;
 /// This class stores rate limiting data in a thread-safe, in-memory <see cref="ConcurrentDictionary{TKey, TValue}"/>.
 /// Data stored in-memory is lost when the application restarts, making this suitable for lightweight or single-instance applications.
 /// </summary>
-public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
+public class InMemoryRateLimitCounterStore : IRateLimitCounterStore
 {
     private readonly ConcurrentDictionary<string, RateLimitData> _store = new();
     private readonly ConcurrentDictionary<string, object> _lockStore = new();
@@ -49,7 +49,6 @@ public class InMemoryRateLimitCounterStore: IRateLimitCounterStore
                 existingData.CreatedAt = rateLimitData.CreatedAt;
                 return existingData;
             });
-
 
             return Task.FromResult(rateLimitData);
         }

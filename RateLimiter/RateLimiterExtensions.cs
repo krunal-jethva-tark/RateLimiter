@@ -5,8 +5,10 @@ using RateLimiter.Strategies;
 namespace RateLimiter;
 
 /// <summary>
-/// Provides extension methods for registering different rate limiting policies 
-/// within the application.
+/// Provides extension methods for registering different rate limiting policies
+/// within the application. These methods allow for the configuration and application
+/// of various rate limiting strategies, such as Fixed Window and Token Bucket, to control
+/// the rate of incoming requests.
 /// </summary>
 public static class RateLimiterExtensions
 {
@@ -92,7 +94,7 @@ public static class RateLimiterExtensions
         });
         return registry;
     }
-    
+
     /// <summary>
     /// Marks the last registered rate limiting policy as the default policy.
     /// This method sets the default policy for the rate limiter, which will be used if no specific policy is specified.

@@ -5,12 +5,12 @@ namespace RateLimiter.Strategies;
 
 /// <summary>
 /// Serves as the base class for implementing various rate limiting strategies.
-/// Derived classes must implement the <see cref="IsRequestPermittedAsync"/> method, 
+/// Derived classes must implement the <see cref="IsRequestPermittedAsync"/> method,
 /// which defines how rate limiting is applied based on the strategy's options and logic.
 /// </summary>
 /// <typeparam name="TOptions">
-/// The type of options used for configuring the rate limiting strategy. 
-/// This should inherit from <see cref="RateLimiterStrategyOptions"/> and include specific configuration details 
+/// The type of options used for configuring the rate limiting strategy.
+/// This should inherit from <see cref="RateLimiterStrategyOptions"/> and include specific configuration details
 /// relevant to the rate limiting strategy (e.g., window size, request limits).
 /// </typeparam>
 public abstract class RateLimiterStrategyBase<TOptions>
@@ -20,7 +20,7 @@ public abstract class RateLimiterStrategyBase<TOptions>
     /// Gets the options used for configuring the rate limiting strategy.
     /// </summary>
     /// <remarks>
-    /// The options contain the configurable settings for the specific rate limiting strategy. 
+    /// The options contain the configurable settings for the specific rate limiting strategy.
     /// This includes parameters like time windows, token generation rates, and request limits.
     /// </remarks>
     public TOptions Options { get; }
@@ -29,11 +29,11 @@ public abstract class RateLimiterStrategyBase<TOptions>
     /// Initializes a new instance of the <see cref="RateLimiterStrategyBase{TOptions}"/> class.
     /// </summary>
     /// <param name="counterStore">
-    /// The <see cref="IRateLimitCounterStore"/> used for tracking and persisting request counts 
+    /// The <see cref="IRateLimitCounterStore"/> used for tracking and persisting request counts
     /// for rate limiting. This store can be backed by in-memory, distributed cache, or database storage.
     /// </param>
     /// <param name="options">
-    /// The configuration options for the rate limiting strategy, which dictate how requests are counted, 
+    /// The configuration options for the rate limiting strategy, which dictate how requests are counted,
     /// limited, and throttled.
     /// </param>
     protected RateLimiterStrategyBase(IRateLimitCounterStore counterStore, TOptions options)
@@ -50,11 +50,11 @@ public abstract class RateLimiterStrategyBase<TOptions>
     /// the entity whose request is being evaluated.
     /// </param>
     /// <param name="asOfDate">
-    /// The current date and time used to evaluate the rate limiting window or period. 
+    /// The current date and time used to evaluate the rate limiting window or period.
     /// This ensures that rate limiting is applied based on a consistent time reference.
     /// </param>
     /// <returns>
-    /// A task that represents the asynchronous operation, containing a boolean value indicating 
+    /// A task that represents the asynchronous operation, containing a boolean value indicating
     /// whether the request is permitted (<c>true</c>) or rejected due to exceeding the limit (<c>false</c>).
     /// </returns>
     /// <example>

@@ -1,10 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace RateLimiter;
 
 /// <summary>
 /// Provides extension methods for integrating the rate limiter services
 /// into the application's Dependency Injection (DI) container.
+/// This class allows for the configuration and registration of rate limiting policies,
+/// enabling the application to enforce rate limits on incoming requests.
 /// </summary>
 public static class StartupExtensions
 {
@@ -19,7 +23,7 @@ public static class StartupExtensions
     /// </param>
     /// <param name="configureOptions">
     /// An action that configures the <see cref="RateLimiterPolicyRegistry"/>, allowing you to define
-    /// different rate limiting policies for your application. 
+    /// different rate limiting policies for your application.
     /// This could include policies like Fixed Window or Token Bucket strategies.
     /// </param>
     /// <returns>

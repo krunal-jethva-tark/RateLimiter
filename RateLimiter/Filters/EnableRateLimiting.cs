@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace RateLimiter.Filters;
 
 /// <summary>
-/// An abstract attribute that enables rate limiting on resource actions.
+/// An attribute that enables rate limiting on resource actions.
 /// This attribute can be used to specify a rate limiting policy name for the action it decorates.
 /// </summary>
 public sealed class EnableRateLimiting(string? policyName) : Attribute, IResourceFilter
@@ -15,9 +15,9 @@ public sealed class EnableRateLimiting(string? policyName) : Attribute, IResourc
     
     /// <summary>
     /// Executes before the resource method is called.
-    /// This method is intentionally left empty, as rate limiting is handled in middleware.
+    /// This method is intentionally left empty because rate limiting is managed by middleware.
     /// </summary>
-    /// <param name="context">The context of the resource executing.</param>
+    /// <param name="context">The context of the resource being executed.</param>
     public void OnResourceExecuting(ResourceExecutingContext context)
     {
         // This method is intentionally left empty

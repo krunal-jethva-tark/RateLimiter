@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RateLimiter - Krunal Jethva</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="description"
+    content="An Attempt to make distributed .NET RateLimiter." />
+  <meta name="viewport"
+    content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/lib/themes/vue.css" />
+  <style>
+    .markdown-section {
+      max-width: 700px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.$docsify = {
+      subMaxLevel: 1,
+      maxLevel: 3,
+      auto2top: true,
+      repo: 'krunal-jethva-tark/RateLimiter.Doc',
+      routerMode: 'history',
+      search: 'auto',
+      search: [
+        '/docs/README.md', // => /README.md
+      ],
+      // complete configuration parameters
+      search: {
+        maxAge: 180000,
+        paths: 'auto',
+        placeholder: 'Type to search',
+        noData: 'No Results!',
+        // Headline depth, 1 - 6
+        depth: 3,
+        hideOtherSidebarContent: false, // whether or not to hide other sidebar content
+      },
+    };
+  </script>
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+</body>
+
+</html>

@@ -7,15 +7,19 @@ namespace RateLimiter;
 /// <summary>
 /// The <see cref="RateLimiterPolicyRegistry"/> class is responsible for managing and registering
 /// rate limiting policies that control how requests are processed based on defined strategies.
+/// This class allows for the registration, retrieval, and management of different rate limiting policies,
+/// enabling fine-grained control over how rate limits are applied to various parts of an application.
 /// </summary>
 public class RateLimiterPolicyRegistry
 {
     /// <summary>
     /// Gets or sets the default rate limiting policy. This policy will be applied if no specific policy is specified.
+    /// The default policy is used as a fallback mechanism to ensure that a rate limiting strategy is always in place.
     /// </summary>
     public Func<HttpContext, RateLimiterStrategyBase<RateLimiterStrategyOptions>>? DefaultPolicy { get; private set; }
-    
+
     private string? _lastRegisteredPolicy; // Track the last registered policy
+
     /// <summary>
     /// A dictionary that holds all the registered rate limiting policies.
     /// Each entry in the dictionary maps a policy name to its corresponding strategy factory.
@@ -35,7 +39,7 @@ public class RateLimiterPolicyRegistry
     /// This name is used to reference the policy when applying it to different API endpoints or parts of the application.
     /// </param>
     /// <param name="strategyFactory">
-    /// An instance of <see cref="RateLimiterStrategyBase{TOptions}"/> representing the rate limiter strategy for the specified policy.
+    /// A factory function that creates an instance of <see cref="RateLimiterStrategyBase{TOptions}"/> representing the rate limiter strategy for the specified policy.
     /// The strategy defines how requests are throttled or allowed based on policy settings.
     /// </param>
     /// <exception cref="InvalidOperationException">
@@ -68,7 +72,7 @@ public class RateLimiterPolicyRegistry
     /// The name of the policy to retrieve.
     /// </param>
     /// <returns>
-    /// An instance of <see cref="RateLimiterStrategyBase{TOptions}"/> representing the rate limiter strategy for the specified policy.
+    /// A factory function that creates an instance of <see cref="RateLimiterStrategyBase{TOptions}"/> representing the rate limiter strategy for the specified policy.
     /// Returns <c>null</c> if no policy with the specified name exists.
     /// </returns>
     /// <example>
