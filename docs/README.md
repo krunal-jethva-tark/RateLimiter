@@ -42,12 +42,9 @@ public void ConfigureServices(IServiceCollection services)
 }
 ```
 
-## License
-This project is licensed under the MIT License. See the [LICENSE](../LICENSE) file for details.
-
 ## FAQ
 ### 1. How do I configure Redis for distributed rate limiting?
-Ensure that Redis is installed and running on your server. Update the connection strings in the configuration file to point to your Redis instance.
+Ensure that Redis is installed and running on your server. Update the connection strings in the configuration file to point to your Redis instance
 
 ### 2. How does burst handling work in the Token Bucket strategy?
 The token bucket strategy allows users to accumulate "credits" if they haven’t made requests for a certain period. This allows them to send bursts of requests all at once, up to a certain limit. See [Token Bucket Strategy](./TokenBucketRateStrategy.md) for details.

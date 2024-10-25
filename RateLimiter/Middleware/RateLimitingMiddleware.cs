@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
@@ -18,7 +17,6 @@ public class RateLimitingMiddleware
     private readonly RequestDelegate _next;
     private readonly RateLimiterPolicyRegistry _policyRegistry;
     private readonly ILogger<RateLimitingMiddleware> _logger;
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _lockStore = new();
 
     // Define Prometheus metrics
     private static readonly Counter TotalRequests = Metrics.CreateCounter("total_requests", "Total number of HTTP requests.");
@@ -87,9 +85,6 @@ public class RateLimitingMiddleware
     private async Task<bool> ExecuteRateLimitingStrategy(HttpContext context, RateLimiterStrategyBase<RateLimiterStrategyOptions> strategy)
     {
         var key = strategy.Options.KeyGenerator(context);
-        var lockObject = _lockStore.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-
-        await lockObject.WaitAsync();
         try
         {
             if (await strategy.IsRequestPermittedAsync(key, DateTime.UtcNow))
@@ -105,10 +100,6 @@ public class RateLimitingMiddleware
             _logger.LogError(ex, $"Error processing request with strategy: {strategy.GetType().Name}");
             await RejectRequest(context, "Internal server error.", StatusCodes.Status500InternalServerError);
             return false;
-        }
-        finally
-        {
-            lockObject.Release();
         }
     }
 
