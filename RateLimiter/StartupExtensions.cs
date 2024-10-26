@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 
-using Microsoft.Extensions.DependencyInjection;
-
 namespace RateLimiter;
 
 /// <summary>
@@ -48,6 +46,8 @@ public static class StartupExtensions
         var options = new RateLimiterPolicyRegistry();
         configureOptions(options);
 
+        services.AddSingleton<RateLimitingMetrics>();
+        
         // Register the rate limiter options as a singleton
         services.AddSingleton(options);
 

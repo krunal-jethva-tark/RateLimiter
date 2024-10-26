@@ -1,7 +1,7 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
-using Prometheus;
 using RateLimiter.Filters;
 using RateLimiter.Models;
 using RateLimiter.Strategies;
@@ -17,17 +17,14 @@ public class RateLimitingMiddleware
     private readonly RequestDelegate _next;
     private readonly RateLimiterPolicyRegistry _policyRegistry;
     private readonly ILogger<RateLimitingMiddleware> _logger;
-
-    // Define Prometheus metrics
-    private static readonly Counter TotalRequests = Metrics.CreateCounter("total_requests", "Total number of HTTP requests.");
-    private static readonly Counter AcceptedRequests = Metrics.CreateCounter("accepted_requests", "Number of accepted HTTP requests (status 200).");
-    private static readonly Counter RejectedRequests = Metrics.CreateCounter("rejected_requests", "Number of rejected HTTP requests (status 429).");
+    private readonly RateLimitingMetrics _metrics;
     
-    public RateLimitingMiddleware(RequestDelegate next, RateLimiterPolicyRegistry policyRegistry, ILogger<RateLimitingMiddleware> logger)
+    public RateLimitingMiddleware(RequestDelegate next, RateLimiterPolicyRegistry policyRegistry, ILogger<RateLimitingMiddleware> logger, RateLimitingMetrics metrics)
     {
         _next = next;
         _policyRegistry = policyRegistry;
         _logger = logger;
+        _metrics = metrics;
     }
     
     /// <summary>
@@ -38,7 +35,6 @@ public class RateLimitingMiddleware
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
-        TotalRequests.Inc();
 
         var policyName = GetRateLimitingPolicyName(context);
         if (policyName != null && !await ProcessPolicy(context, policyName))
@@ -50,9 +46,7 @@ public class RateLimitingMiddleware
         {
             return;
         }
-
-        // Request is accepted
-        AcceptedRequests.Inc();
+        
         await _next(context);
     }
     
@@ -69,43 +63,49 @@ public class RateLimitingMiddleware
         if (policyFactory == null) return false;
 
         var strategy = policyFactory(context);
-        return await ExecuteRateLimitingStrategy(context, strategy);
+        return await ExecuteRateLimitingStrategy(context, policyName, strategy);
     }
 
     private async Task<bool> ProcessGlobalPolicies(HttpContext context)
     {
-        var defaultPolicy = _policyRegistry.DefaultPolicy;
-        if (defaultPolicy is not null)
-        {
-            return await ExecuteRateLimitingStrategy(context, defaultPolicy(context));
-        }
-        return true;
+        var defaultPolicy = _policyRegistry.DefaultPolicyName;
+        return await ProcessPolicy(context, defaultPolicy);
     }
     
-    private async Task<bool> ExecuteRateLimitingStrategy(HttpContext context, RateLimiterStrategyBase<RateLimiterStrategyOptions> strategy)
+    private async Task<bool> ExecuteRateLimitingStrategy(HttpContext context, string policyName, RateLimiterStrategyBase<RateLimiterStrategyOptions> strategy)
     {
         var key = strategy.Options.KeyGenerator(context);
+        var startTimestamp = Stopwatch.GetTimestamp();
+        _metrics.LeaseStart(policyName);
         try
         {
             if (await strategy.IsRequestPermittedAsync(key, DateTime.UtcNow))
             {
                 return true;
             }
-
+            
+            _metrics.LeaseFailed(policyName, RequestRejectionReason.GlobalLimiter);
             await RejectRequest(context, strategy.Options.RejectionMessage, strategy.Options.RejectionStatusCode);
             return false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error processing request with strategy: {strategy.GetType().Name}");
+            _metrics.LeaseFailed(policyName, RequestRejectionReason.RequestCanceled);
             await RejectRequest(context, "Internal server error.", StatusCodes.Status500InternalServerError);
             return false;
+        }
+        finally
+        {
+            var endTimeStamp = Stopwatch.GetTimestamp();
+            var duration = Stopwatch.GetElapsedTime(startTimestamp, endTimeStamp);
+            _metrics.LeaseEnd(policyName, duration);
         }
     }
 
     private static async Task RejectRequest(HttpContext context, string message = "Rate limit exceeded. Please try again later.", int statusCode = StatusCodes.Status429TooManyRequests)
     {
-        RejectedRequests.Inc();
+        context.Response.Clear();
         context.Response.StatusCode = statusCode;
         await context.Response.WriteAsync(message);
     }

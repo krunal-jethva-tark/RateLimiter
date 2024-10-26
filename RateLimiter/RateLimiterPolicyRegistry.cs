@@ -16,7 +16,7 @@ public class RateLimiterPolicyRegistry
     /// Gets or sets the default rate limiting policy. This policy will be applied if no specific policy is specified.
     /// The default policy is used as a fallback mechanism to ensure that a rate limiting strategy is always in place.
     /// </summary>
-    public Func<HttpContext, RateLimiterStrategyBase<RateLimiterStrategyOptions>>? DefaultPolicy { get; private set; }
+    public string? DefaultPolicyName { get; private set; }
 
     private string? _lastRegisteredPolicy; // Track the last registered policy
 
@@ -100,11 +100,6 @@ public class RateLimiterPolicyRegistry
     /// </exception>
     public void SetDefaultPolicy()
     {
-        if (_lastRegisteredPolicy == null)
-        {
-            throw new InvalidOperationException("No policy has been registered yet.");
-        }
-
-        DefaultPolicy = Policies[_lastRegisteredPolicy];
+        DefaultPolicyName = _lastRegisteredPolicy ?? throw new InvalidOperationException("No policy has been registered yet.");
     }
 }
