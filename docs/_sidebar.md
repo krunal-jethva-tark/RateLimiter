@@ -1,4 +1,4 @@
-- [Home](/)
+- [Home](/RateLimiter/)
 - [Introduction](README.md#introduction)
 - [Features](README.md#features)
 - Documentation
