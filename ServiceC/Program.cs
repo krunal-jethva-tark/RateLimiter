@@ -1,3 +1,5 @@
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using RateLimiter;
 using RateLimiter.Middleware;
 using RateLimiter.Stores;
@@ -10,14 +12,23 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
+// Adds telemetry support
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
+    .WithMetrics(metrics 
+        => metrics
+            .AddMeter(RateLimitingMetrics.MeterName)
+            .AddPrometheusExporter()
+    );
+
 builder.Services.AddSingleton<IRateLimitCounterStore, InMemoryRateLimitCounterStore>();
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowPolicy("ServiceB", fixedWindowOptions =>
+    options.AddFixedWindowPolicy("ServiceC", fixedWindowOptions =>
     {
         fixedWindowOptions.PermitLimit = 20;
         fixedWindowOptions.Window = TimeSpan.FromSeconds(1);
-    });
+    }).MarkAsDefault();
 });
 
 var app = builder.Build();
@@ -28,6 +39,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Configure the Prometheus scraping endpoint
+app.MapPrometheusScrapingEndpoint();
 
 app.UseMiddleware<RateLimitingMiddleware>();
 

@@ -8,6 +8,7 @@ namespace ServiceA.Controllers;
 public class ServiceAController : ControllerBase
 {
     [HttpGet("hello")]
+    [DisableRateLimiting]
     public IActionResult Hello() => Ok("Hello from Service A!");
 
     [HttpGet("ping")]
@@ -15,6 +16,5 @@ public class ServiceAController : ControllerBase
     public IActionResult Ping() => Ok("Ping from Service A!");
 
     [HttpGet("echo")]
-    [DisableRateLimiting]
     public IActionResult Echo() => Ok();
 }

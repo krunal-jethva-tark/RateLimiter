@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace ServiceA.Controllers;
+namespace ServiceC.Controllers;
 
 [ApiController]
-[Route("serviceB")]
-public class ServiceAController : ControllerBase
+[Route("serviceC")]
+public class ServiceCController : ControllerBase
 {
     [HttpGet("hello")]
     public IActionResult Hello() => Ok("Hello from Service A!");
