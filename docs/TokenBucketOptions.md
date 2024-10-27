@@ -1,39 +1,29 @@
-## Registering Rate Limiter in Dependency Injection
+## `TokenBucketOptions`
 
-The `RateLimiter` library integrates seamlessly into your application through the `AddRateLimiter` extension method. This method allows you to register rate-limiting policies within the Dependency Injection (DI) container, making them accessible throughout your application.
+The `TokenBucketOptions` class is used to configure the token bucket rate limiting strategy. In a token bucket strategy, tokens are added to a bucket at a fixed rate, and each request consumes a token. When the bucket is empty, additional requests are rejected until more tokens are added.
 
-### Example
+### Parameters
 
-In your `Startup.cs` or `Program.cs` file (depending on your ASP.NET Core version), you can register the rate limiter policies as follows:
+- **MaxRequestsPerSecond**: Specifies the maximum number of requests that can be processed per second.
+  - Example: If `MaxRequestsPerSecond` is set to 20, up to 20 requests can be processed per second.
+- **BurstCapacity**: Defines the maximum number of requests that can be made in a burst, allowing for sudden spikes in traffic.
+  - Example: If `BurstCapacity` is set to 100, up to 100 requests can be made in a burst.
+
+### Example Usage
+
+Here’s how to configure and use the `TokenBucketOptions` in your rate limiting policy:
 
 ```csharp
-public void ConfigureServices(IServiceCollection services)
+// Create a new instance of TokenBucketOptions
+var options = new TokenBucketOptions
 {
-    services.AddRateLimiter(registry =>
-    {
-        registry.AddFixedWindowPolicy("FixedWindowPolicy", options =>
-        {
-            options.WindowSize = TimeSpan.FromMinutes(1);
-            options.RequestLimit = 100;
-        }, isGlobal: true);
-    });
+    MaxRequestsPerSecond = 20,    // Allow 20 requests per second
+    BurstCapacity = 100           // Allow bursts of up to 100 requests
+};
 
-    // Additional service registrations
-}
-```
-
-### Explanation
-
-- **IServiceCollection**: The `AddRateLimiter` method extends the `IServiceCollection` interface, allowing you to configure and register rate-limiting policies directly in the DI container.
-
-- **Rate Limiting Policies**: Within the `RateLimiterPolicyRegistry`, you can define and configure various rate-limiting strategies, such as Fixed Window or Token Bucket, and register them for use in your application.
-
-- **Singleton Registration**: The `RateLimiterPolicyRegistry` is registered as a singleton, ensuring that a single instance of the registry is used throughout the application lifecycle.
-
-By including this registration in your service configuration, your application will be equipped with robust rate-limiting capabilities across all services that depend on the configured policies.
-
-### Additional Considerations
-
-- **Middleware Integration**: After registering the rate limiter, consider integrating the `RateLimitingMiddleware` to apply the policies effectively to incoming requests.
-
-- **Endpoint-Specific Policies**: You can also apply rate-limiting attributes to specific controllers or actions for more granular control over your rate-limiting strategy.
+// Use these options when configuring your rate limiter policy
+rateLimiterRegistry.AddTokenBucketPolicy("MyPolicy", opts =>
+{
+    opts.MaxRequestsPerSecond = options.MaxRequestsPerSecond;
+    opts.BurstCapacity = options.BurstCapacity;
+});

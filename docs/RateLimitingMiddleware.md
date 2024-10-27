@@ -23,20 +23,28 @@ The `RateLimitingMiddleware` class is designed to implement rate-limiting strate
        app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
    }
    ```
+   
+2. **Register Counter Store**:
+   Register a counter store to keep track of request counts and enforce rate limiting policies. This can be done by adding the appropriate implementation of `IRateLimitCounterStore` to the service collection.
 
-2. **Define Rate Limiting Policies**: 
+   ```csharp
+   services.AddSingleton<IRateLimitCounterStore, InMemoryRateLimitCounterStore>();
+   ```
+3. **Define Rate Limiting Policies**: 
    Register rate-limiting policies within your service configuration.
 
    ```csharp
-   services.AddSingleton<RateLimiterPolicyRegistry>(serviceProvider =>
-   {
-       var registry = new RateLimiterPolicyRegistry();
-       // Register your policies here
-       return registry;
-   });
+   services.AddRateLimiter(registry =>
+    {
+        registry.AddFixedWindowPolicy("FixedWindowPolicy", options =>
+        {
+            options.Window = TimeSpan.FromMinutes(1);   // Time window for rate limiting
+            options.PermitLimit = 100;                  // Max number of requests allowed in the window
+        });
+    });
    ```
 
-3. **Use Rate Limiting Attributes**: 
+4. **Use Rate Limiting Attributes**: 
    Apply rate-limiting attributes to your controllers or specific action methods.
 
    ```csharp
@@ -49,6 +57,24 @@ The `RateLimitingMiddleware` class is designed to implement rate-limiting strate
        }
    }
    ```
+5. **Disable Rate Limiting for Specific Actions**: 
+   You can disable rate limiting for specific actions by applying the `DisableRateLimitingAttribute`.
+
+   ```csharp
+   [DisableRateLimiting]
+   public IActionResult Get()
+   {
+       return Ok("Request is allowed without rate limiting.");
+   }
+   ```
+
+### Handling Limits and Responses
+
+- **Request Limit Exceeded**: When the limit is exceeded, clients receive a **HTTP 429 Too Many Requests** response, indicating that they need to slow down.
+- **Rate Limit Headers**: The server may include response headers to notify clients about their remaining requests in the current window. Common headers include:
+   - `X-RateLimit-Limit`: The total number of requests allowed in the window.
+   - `X-RateLimit-Remaining`: The number of requests remaining.
+   - `X-RateLimit-Reset`: Time when the current window resets.
 
 ### When to Use
 

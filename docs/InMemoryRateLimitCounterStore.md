@@ -2,7 +2,7 @@
 
 The `InMemoryRateLimitCounterStore` provides a thread-safe, in-memory implementation to manage rate limiting data. This store is ideal for **single-instance applications** where persistence across application restarts is not required. It offers quick and easy access to rate limiting data, making it a good option for development, testing, and simple deployments.
 
-### Key Features
+### Features
 
 - **Thread-Safe Access**: Utilizes a `ConcurrentDictionary` to ensure safe, simultaneous access from multiple threads.
 - **Automatic Cleanup**: Expired rate limit data is automatically removed when fetched, helping to manage memory usage without requiring manual cleanup.

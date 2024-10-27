@@ -15,4 +15,10 @@ The `RedisRateLimitCounterStore` class implements the `IRateLimitCounterStore` i
 ### Prerequisites
 - **Redis Server**: Ensure that a Redis server is running and accessible from your application environment. You can configure the connection string as needed to connect to your Redis instance.
 
-This documentation provides a comprehensive overview of how to effectively use the `RedisRateLimitCounterStore` in your applications. If you have any further questions or need additional examples, feel free to ask!
+### Example
+The following example demonstrates how to use the `RedisRateLimitCounterStore` in an ASP.NET Core application:
+
+```csharp
+// Add RedisRateLimitCounterStore to the service collection
+builder.Services.AddRedisRateLimiting("localhost:6379");
+```

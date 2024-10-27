@@ -2,7 +2,7 @@
 
 The **Token Bucket** rate limiting strategy is designed to accommodate bursts of requests while ensuring a controlled and consistent request rate over time. This strategy is particularly useful when you want to allow short surges in traffic while maintaining an overall limit on requests.
 
-### Example: How to Use `TokenBucketRateStrategy`
+### Example
 
 To integrate the `TokenBucketRateStrategy` into your rate limiting configuration, you can follow the example below:
 
@@ -29,7 +29,8 @@ public void ConfigureServices(IServiceCollection services)
 
 - **State Storage**: The state of the token bucket, including the number of tokens available and the last time tokens were refilled, must be stored in a backing store. This could be an in-memory store or a distributed cache, depending on your application's architecture.
 
-### Use Cases
+checkout the options available for the `TokenBucketRateStrategy` in the [TokenBucketOptionsz](TokenBucketOptions.md) documentation.
+### When to Use
 
 The Token Bucket strategy is particularly effective in scenarios where:
 

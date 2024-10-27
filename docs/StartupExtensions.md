@@ -29,7 +29,3 @@ public void ConfigureServices(IServiceCollection services)
 - **Singleton Registration**: The `RateLimiterPolicyRegistry` is registered as a singleton, ensuring that the same instance of the registry is used throughout the application.
 
 By adding this registration, your application will be equipped with rate-limiting capabilities across all services that depend on the configured policies.
-
----
-
-Would you like to add more information to the README, such as handling middleware or applying rate limiting to specific endpoints?

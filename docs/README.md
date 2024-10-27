@@ -1,50 +1,56 @@
-# Rate Limiter Library
+## Rate Limiter Library
 
-## Introduction
+### Introduction
 This library provides a distributed rate limiting solution, designed to manage and throttle API requests. It supports multiple strategies such as fixed window and token bucket rate limiting, offering flexibility for per-user, per-IP, or per-service rate limiting. The library is optimized for high scalability and performance in distributed environments.
 
-## Features
+### Features
 - Supports **Fixed Window** and **Token Bucket** rate limiting strategies.
 - Flexible configuration for **per-user**, **per-IP**, or **per-service** rate limiting.
 - **Distributed design** using Redis for scalability.
 - Handles burst traffic (in Token Bucket strategy).
 - Provides relevant **HTTP headers** to indicate capacity status.
 
-## Documentation
+### Documentation
 
 ### Rate Limiting Strategies
 - [Fixed Window Strategy](./FixedWindowRateStrategy.md)
 - [Token Bucket Strategy](./TokenBucketRateStrategy.md)
 
 ### Core Components
+
 - [Enable Rate Limiting Attribute](./EnableRateLimitingAttribute.md)
+- [Disable Rate Limiting Attribute](./DisableRateLimitingAttribute.md)
 - [Rate Limiting Middleware](./RateLimitingMiddleware.md)
-- [Rate Limiter Policy Registry](./RateLimiterPolicyRegistry.md)
-- [Rate Limit Counter Store (In-Memory)](./InMemoryRateLimitCounterStore.md)
-- [Rate Limit Counter Store (Redis)](./RedisRateLimitCounterStore.md)
 
 ### Advanced Topics
 - [Rate Limiter Strategy Base](./RateLimiterStrategyBase.md)
 - [Rate Limiter Extensions](./RateLimiterExtensions.md)
 - [IRateLimitCounterStore Interface](./IRateLimitCounterStore.md)
+- [Rate Limiter Policy Registry](./RateLimiterPolicyRegistry.md)
 
-## Examples
+### Example
 Here is a simple example of how to configure the rate limiter in a .NET application:
 
 ```csharp
-public void ConfigureServices(IServiceCollection services)
+builder.Services.AddSingleton<IRateLimitCounterStore, InMemoryRateLimitCounterStore>();
+builder.Services.AddRateLimiter(options =>
 {
-    services.AddRateLimiting(options =>
+    options.AddFixedWindowPolicy("fixed", fixedWindowOptions =>
     {
-        options.UseFixedWindowStrategy("fixed", 10, TimeSpan.FromSeconds(1));
-        options.UseTokenBucketStrategy("token", 10, 100, TimeSpan.FromSeconds(1));
-    });
-}
+        fixedWindowOptions.PermitLimit = 20;
+        fixedWindowOptions.Window = TimeSpan.FromSeconds(1);
+        fixedWindowOptions.KeyGenerator = context => context.Request.Headers["User-Identity"].ToString() ??  $"anonymous";
+    })
+    .MarkAsDefault();
+
+    options.AddTokenBucketPolicy("token", tokenBucketOptions =>
+    {
+        tokenBucketOptions.MaxRequestsPerSecond = 20;
+        tokenBucketOptions.BurstCapacity = 100;
+    })
+});
+
+var app = builder.Build();
+
+app.UseMiddleware<RateLimitingMiddleware>()
 ```
-
-## FAQ
-### 1. How do I configure Redis for distributed rate limiting?
-Ensure that Redis is installed and running on your server. Update the connection strings in the configuration file to point to your Redis instance
-
-### 2. How does burst handling work in the Token Bucket strategy?
-The token bucket strategy allows users to accumulate "credits" if they haven’t made requests for a certain period. This allows them to send bursts of requests all at once, up to a certain limit. See [Token Bucket Strategy](./TokenBucketRateStrategy.md) for details.

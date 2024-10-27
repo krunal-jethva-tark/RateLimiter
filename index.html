@@ -7,11 +7,27 @@
   <meta name="description"
     content="An Attempt to make distributed .NET RateLimiter." />
   <meta name="viewport"
-    content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+    content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/lib/themes/vue.css" />
   <style>
     .markdown-section {
       max-width: 700px;
+    }
+    /* Target the collapsible strategy list */
+    .sidebar li>p {
+        color: #505d6b;
+        font-size: 14px;
+        font-weight: 400;
+        overflow: hidden;
+        text-decoration: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Add a pointer cursor on hover */
+    .sidebar ul li p:hover {
+      text-decoration: underline;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -22,26 +38,23 @@
       subMaxLevel: 1,
       maxLevel: 3,
       auto2top: true,
-      repo: 'krunal-jethva-tark/RateLimiter.Doc',
+      repo: 'https://github.com/krunal-jethva-tark/RateLimiter',
+      basePath: '/docs',
       routerMode: 'history',
-      search: 'auto',
-      search: [
-        '/docs/README.md', // => /README.md
-      ],
-      // complete configuration parameters
+      loadSidebar: true,
+      sidebarDisplayLevel: 0, // 0 means all levels are collapsed initially
       search: {
         maxAge: 180000,
         paths: 'auto',
         placeholder: 'Type to search',
         noData: 'No Results!',
-        // Headline depth, 1 - 6
         depth: 3,
-        hideOtherSidebarContent: false, // whether or not to hide other sidebar content
+        hideOtherSidebarContent: true,
       },
     };
   </script>
   <script src="//cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/docsify-sidebar-collapse.min.js"></script>
 </body>
-
 </html>
