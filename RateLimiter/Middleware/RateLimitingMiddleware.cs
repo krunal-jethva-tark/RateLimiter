@@ -35,19 +35,32 @@ public class RateLimitingMiddleware
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
-
-        var policyName = GetRateLimitingPolicyName(context);
-        if (policyName != null && !await ProcessPolicy(context, policyName))
+        if (await TryApplyingRateLimitingPolicies(context))
         {
             return;
         }
+        await _next(context);
+    }
 
-        if (!await ProcessGlobalPolicies(context))
+    private async Task<bool> TryApplyingRateLimitingPolicies(HttpContext context)
+    {
+        var policyName = GetRateLimitingPolicyName(context);
+        if (policyName != null)
         {
-            return;
+            await ProcessPolicy(context, policyName);
+            return true;
         }
         
-        await _next(context);
+        // Try to apply global policies if no specific policy was found
+        var defaultPolicy = _policyRegistry.DefaultPolicyName;
+        if (defaultPolicy != null)
+        {
+            await ProcessPolicy(context, defaultPolicy);
+            return true;
+        }
+        
+        // return false if no policy was applied
+        return false;
     }
     
     private static string? GetRateLimitingPolicyName(HttpContext context)
@@ -57,22 +70,17 @@ public class RateLimitingMiddleware
         return rateLimitingAttr?.PolicyName;
     }
 
-    private async Task<bool> ProcessPolicy(HttpContext context, string policyName)
+    private async Task ProcessPolicy(HttpContext context, string policyName)
     {
         var policyFactory = _policyRegistry.GetPolicy(policyName);
-        if (policyFactory == null) return false;
+        
+        if (policyFactory == null) return;
 
         var strategy = policyFactory(context);
-        return await ExecuteRateLimitingStrategy(context, policyName, strategy);
-    }
-
-    private async Task<bool> ProcessGlobalPolicies(HttpContext context)
-    {
-        var defaultPolicy = _policyRegistry.DefaultPolicyName;
-        return await ProcessPolicy(context, defaultPolicy);
+        await ApplyRateLimitingStrategy(context, policyName, strategy);
     }
     
-    private async Task<bool> ExecuteRateLimitingStrategy(HttpContext context, string policyName, RateLimiterStrategyBase<RateLimiterStrategyOptions> strategy)
+    private async Task ApplyRateLimitingStrategy(HttpContext context, string policyName, RateLimiterStrategyBase<RateLimiterStrategyOptions> strategy)
     {
         var key = strategy.Options.KeyGenerator(context);
         var startTimestamp = Stopwatch.GetTimestamp();
@@ -81,19 +89,19 @@ public class RateLimitingMiddleware
         {
             if (await strategy.IsRequestPermittedAsync(key, DateTime.UtcNow))
             {
-                return true;
+                await _next(context);
             }
-            
-            _metrics.LeaseFailed(policyName, RequestRejectionReason.GlobalLimiter);
-            await RejectRequest(context, strategy.Options.RejectionMessage, strategy.Options.RejectionStatusCode);
-            return false;
+            else
+            {
+                _metrics.LeaseFailed(policyName, RequestRejectionReason.GlobalLimiter);
+                await RejectRequest(context, strategy.Options.RejectionMessage, strategy.Options.RejectionStatusCode);
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error processing request with strategy: {strategy.GetType().Name}");
             _metrics.LeaseFailed(policyName, RequestRejectionReason.RequestCanceled);
             await RejectRequest(context, "Internal server error.", StatusCodes.Status500InternalServerError);
-            return false;
         }
         finally
         {
