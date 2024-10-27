@@ -93,7 +93,11 @@ public class RateLimitingMiddleware
         _metrics.LeaseStart(policyName);
         try
         {
-            if (await strategy.IsRequestPermittedAsync(key, DateTime.UtcNow))
+            var (isRequestPermitted, headers) = await strategy.IsRequestPermittedAsync(key, DateTime.UtcNow);
+            context.Response.Headers.Add("X-RateLimit-Limit", headers.Limit);
+            context.Response.Headers.Add("X-RateLimit-Remaining", headers.Remaining);
+            context.Response.Headers.Add("X-RateLimit-Reset", headers.Reset);
+            if (isRequestPermitted)
             {
                 await _next(context);
             }
@@ -119,7 +123,6 @@ public class RateLimitingMiddleware
 
     private static async Task RejectRequest(HttpContext context, string message = "Rate limit exceeded. Please try again later.", int statusCode = StatusCodes.Status429TooManyRequests)
     {
-        context.Response.Clear();
         context.Response.StatusCode = statusCode;
         await context.Response.WriteAsync(message);
     }

@@ -40,7 +40,7 @@ public class TokenBucketRateStrategyTests
                 updateLogic(rateLimitData, date));
         
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, asOfDate);
         
         // Assert
         Assert.True(result);
@@ -64,7 +64,7 @@ public class TokenBucketRateStrategyTests
                 updateLogic(rateLimitData, date));
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
         Assert.False(result);
@@ -88,7 +88,7 @@ public class TokenBucketRateStrategyTests
                 updateLogic(rateLimitData, date));
         
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, asOfDate);
         
         // Assert
         Assert.True(result);
@@ -116,7 +116,7 @@ public class TokenBucketRateStrategyTests
                 updateLogic(rateLimitData, date));
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
         Assert.True(result);
@@ -143,7 +143,7 @@ public class TokenBucketRateStrategyTests
                 updateLogic(rateLimitData, date));
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
         Assert.True(result);
@@ -172,12 +172,12 @@ public class TokenBucketRateStrategyTests
         // Simulate making 100 requests (up to burst capacity)
         for (var i = 0; i < 100; i++)
         {
-            var result = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+            var (result, _) = await _strategy.IsRequestPermittedAsync(key, asOfDate);
             Assert.True(result);
         }
 
         // Act - The 101st request should be rejected
-        var resultAfterBurst = await _strategy.IsRequestPermittedAsync(key, asOfDate);
+        var (resultAfterBurst, _) = await _strategy.IsRequestPermittedAsync(key, asOfDate);
 
         // Assert
         Assert.False(resultAfterBurst); // No more tokens available after burst

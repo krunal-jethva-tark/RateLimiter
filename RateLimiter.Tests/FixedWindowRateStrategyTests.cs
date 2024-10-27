@@ -40,7 +40,7 @@ public class FixedWindowRateStrategyTests
                 updateLogic(rateLimitData, date));
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
 
         // Assert
         Assert.True(result); // Request is permitted since it's within the limit
@@ -58,7 +58,7 @@ public class FixedWindowRateStrategyTests
                 updateLogic(rateLimitData, date));
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
 
         // Assert
         Assert.False(result); // Request should be rejected since the rate limit has been exceeded
@@ -76,7 +76,7 @@ public class FixedWindowRateStrategyTests
                 updateLogic(nullRateLimitData, date)); // Null data should trigger initialization
 
         // Act
-        var result = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
+        var (result, _) = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
 
         // Assert
         Assert.True(result); // Request is permitted because new data should be initialized
@@ -96,12 +96,12 @@ public class FixedWindowRateStrategyTests
         // Act and Assert for 5 requests within the rate limit
         for (var i = 0; i < 5; i++)
         {
-            var result = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
+            var (result, _) = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
             Assert.True(result); // All should be permitted within the limit
         }
 
         // Act - 6th request should be rejected
-        var exceededResult = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
+        var (exceededResult, _) = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
 
         // Assert
         Assert.False(exceededResult); // 6th request exceeds the limit and should be rejected
@@ -119,10 +119,10 @@ public class FixedWindowRateStrategyTests
                 updateLogic(rateLimitData, date));
 
         // Act - 5th request should be within the limit
-        var resultWithinLimit = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
+        var (resultWithinLimit, _) = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
 
         // 6th request exceeds the limit
-        var resultExceedingLimit = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
+        var (resultExceedingLimit, _) = await _strategy.IsRequestPermittedAsync(key, _asOfDate);
 
         // Assert
         Assert.True(resultWithinLimit); // 5th request within limit should succeed

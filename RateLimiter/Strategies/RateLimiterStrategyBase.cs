@@ -55,7 +55,8 @@ public abstract class RateLimiterStrategyBase<TOptions>
     /// </param>
     /// <returns>
     /// A task that represents the asynchronous operation, containing a boolean value indicating
-    /// whether the request is permitted (<c>true</c>) or rejected due to exceeding the limit (<c>false</c>).
+    /// whether the request is permitted (<c>true</c>) or rejected due to exceeding the limit (<c>false</c>)
+    /// and a <see cref="RateLimitResponseHeaders"/> object containing the rate limit headers.
     /// </returns>
     /// <example>
     /// Example usage in a derived class:
@@ -67,5 +68,5 @@ public abstract class RateLimiterStrategyBase<TOptions>
     /// }
     /// </code>
     /// </example>
-    public abstract Task<bool> IsRequestPermittedAsync(string key, DateTime asOfDate);
+    public abstract Task<(bool, RateLimitResponseHeaders)> IsRequestPermittedAsync(string key, DateTime asOfDate);
 }

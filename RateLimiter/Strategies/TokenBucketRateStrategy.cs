@@ -45,12 +45,13 @@ public class TokenBucketRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
     /// </param>
     /// <returns>
     /// A task that represents the asynchronous operation, containing a boolean value indicating
-    /// whether the request is permitted (<c>true</c>) or rejected (<c>false</c>) based on the token availability.
+    /// whether the request is permitted (<c>true</c>) or rejected (<c>false</c>) based on the token availability
+    /// and a <see cref="RateLimitResponseHeaders"/> object containing the rate limit headers.
     /// </returns>
     /// <example>
     /// Example usage:
     /// <code>
-    /// var isPermitted = await tokenBucketStrategy.IsRequestPermittedAsync("client-key", DateTime.UtcNow);
+    /// var (isPermitted, headers) = await tokenBucketStrategy.IsRequestPermittedAsync("client-key", DateTime.UtcNow);
     /// if (isPermitted)
     /// {
     ///     // Allow the request to proceed
@@ -61,10 +62,18 @@ public class TokenBucketRateStrategy : RateLimiterStrategyBase<RateLimiterStrate
     /// }
     /// </code>
     /// </example>
-    public override async Task<bool> IsRequestPermittedAsync(string key, DateTime asOfDate)
+    public override async Task<(bool, RateLimitResponseHeaders)> IsRequestPermittedAsync(string key, DateTime asOfDate)
     {
         var rateLimitData = await _counterStore.GetAndUpdateRateLimitDataAsync(key, asOfDate, UpdateLogic);
-        return rateLimitData.TokensAvailable >= 0;
+        var isPermitted = rateLimitData.TokensAvailable > 0;
+        
+        var headers = new RateLimitResponseHeaders
+        {
+            Limit = _options.MaxRequestsPerSecond.ToString(),
+            Remaining = rateLimitData.TokensAvailable.ToString(),
+            Reset = (rateLimitData.LastRefillTime + TimeSpan.FromSeconds(1)).ToString("o")
+        };
+        return (isPermitted, headers);
     }
 
     private RateLimitData UpdateLogic(RateLimitData? rateLimitData, DateTime asOfDate)
