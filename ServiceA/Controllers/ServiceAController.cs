@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RateLimiter.Filters;
+using RateLimiter.Attributes;
 
 namespace ServiceA.Controllers;
 
@@ -15,5 +15,6 @@ public class ServiceAController : ControllerBase
     public IActionResult Ping() => Ok("Ping from Service A!");
 
     [HttpGet("echo")]
+    [DisableRateLimiting]
     public IActionResult Echo() => Ok();
 }

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
-using RateLimiter.Filters;
+using RateLimiter.Attributes;
 using RateLimiter.Models;
 using RateLimiter.Strategies;
 
@@ -35,7 +35,7 @@ public class RateLimitingMiddleware
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
-        if (await TryApplyingRateLimitingPolicies(context))
+        if (IsRateLimitingEnabled(context) && await TryApplyingRateLimitingPolicies(context))
         {
             return;
         }
@@ -61,6 +61,12 @@ public class RateLimitingMiddleware
         
         // return false if no policy was applied
         return false;
+    }
+    
+    private static bool IsRateLimitingEnabled(HttpContext context)
+    {
+        var endpoint = context.Features.Get<IEndpointFeature>()?.Endpoint;
+        return endpoint?.Metadata.GetMetadata<DisableRateLimiting>() == null;
     }
     
     private static string? GetRateLimitingPolicyName(HttpContext context)
