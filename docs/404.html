@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Page Not Found</title>
+    <script type="text/javascript">
+      // Redirect to the index.html file with the correct path
+      var path = window.location.pathname;
+      var hash = window.location.hash;
+      var search = window.location.search;
+      var newUrl = '/RateLimiter/#/' + path.replace('/RateLimiter/', '') + search + hash;
+
+      if (window.location.pathname + window.location.search + window.location.hash !== newUrl) {
+        window.location.replace(newUrl);
+      }
+    </script>
+  </head>
+  <body>
+    <p>Redirecting...</p>
+  </body>
+</html>
