@@ -12,21 +12,21 @@ This library provides a distributed rate limiting solution, designed to manage a
 
 ### Documentation
 
-### Rate Limiting Strategies
-- [Fixed Window Strategy](./FixedWindowRateStrategy.md)
-- [Token Bucket Strategy](./TokenBucketRateStrategy.md)
+#### Rate Limiting Strategies
+- [Fixed Window Strategy](/RateLimiter/FixedWindowRateStrategy.md)
+- [Token Bucket Strategy](/RateLimiter/TokenBucketRateStrategy.md)
 
-### Core Components
+#### Core Components
 
-- [Enable Rate Limiting Attribute](./EnableRateLimitingAttribute.md)
-- [Disable Rate Limiting Attribute](./DisableRateLimitingAttribute.md)
-- [Rate Limiting Middleware](./RateLimitingMiddleware.md)
+- [Enable Rate Limiting Attribute](/RateLimiter/EnableRateLimitingAttribute.md)
+- [Disable Rate Limiting Attribute](/RateLimiter/DisableRateLimitingAttribute.md)
+- [Rate Limiting Middleware](/RateLimiter/RateLimitingMiddleware.md)
 
-### Advanced Topics
-- [Rate Limiter Strategy Base](./RateLimiterStrategyBase.md)
-- [Rate Limiter Extensions](./RateLimiterExtensions.md)
-- [IRateLimitCounterStore Interface](./IRateLimitCounterStore.md)
-- [Rate Limiter Policy Registry](./RateLimiterPolicyRegistry.md)
+#### Advanced Topics
+- [Rate Limiter Strategy Base](/RateLimiter/RateLimiterStrategyBase.md)
+- [Rate Limiter Extensions](/RateLimiter/RateLimiterExtensions.md)
+- [IRateLimitCounterStore Interface](/RateLimiter/IRateLimitCounterStore.md)
+- [Rate Limiter Policy Registry](/RateLimiter/RateLimiterPolicyRegistry.md)
 
 ### Example
 Here is a simple example of how to configure the rate limiter in a .NET application:

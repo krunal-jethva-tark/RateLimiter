@@ -4,15 +4,21 @@
     build:
       context: .
       dockerfile: ServiceA/Dockerfile
+    ports:
+      - "5001:8080"
 
   serviceb-1:
     image: serviceb
     build:
       context: .
       dockerfile: ServiceB/Dockerfile
+    ports:
+      - "5001:8080"
 
   servicec:
     image: servicec
     build:
       context: .
       dockerfile: ServiceC/Dockerfile
+    ports:
+      - "5001:8080"
