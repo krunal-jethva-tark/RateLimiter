@@ -40,7 +40,7 @@ public class RateLimitData
     /// <value>
     /// A <see cref="TimeSpan"/> representing the duration before the rate limit data expires.
     /// </value>
-    public TimeSpan Expiration { get; set; }
+    public TimeSpan? Expiration { get; set; }
 
     /// <summary>
     /// Gets or sets the creation time of the rate limit data.

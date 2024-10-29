@@ -54,7 +54,7 @@ public class TokenBucketRateStrategyTests
         var asOfDate = DateTime.UtcNow;
         var rateLimitData = new RateLimitData
         {
-            TokensAvailable = 0,
+            TokensAvailable = -1,
             LastRefillTime = asOfDate,
             CreatedAt = asOfDate
         };

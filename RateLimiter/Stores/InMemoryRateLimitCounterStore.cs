@@ -32,7 +32,7 @@ public class InMemoryRateLimitCounterStore : IRateLimitCounterStore
             var now = DateTime.UtcNow;
             if (_store.TryGetValue(key, out var data))
             {
-                if (data.CreatedAt.Add(data.Expiration) > asOfDate)
+                if (data.Expiration == null || data.CreatedAt.Add((TimeSpan)data.Expiration) > asOfDate)
                 {
                     rateLimitData = data;
                 }

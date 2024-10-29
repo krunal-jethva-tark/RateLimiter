@@ -76,7 +76,7 @@ public class InMemoryRateLimitCounterStoreTests
         var result = await _store.GetAndUpdateRateLimitDataAsync(key, asOfDate, (data, date) =>
         {
             // If the data is expired, recreate a new RateLimitData
-            if (data == null || data.CreatedAt.Add(data.Expiration) < date)
+            if (data == null || data.Expiration == null || data.CreatedAt.Add((TimeSpan)data.Expiration) < date)
             {
                 return new RateLimitData
                 {

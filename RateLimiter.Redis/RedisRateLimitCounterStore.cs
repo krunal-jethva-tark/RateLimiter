@@ -51,7 +51,7 @@ public class RedisRateLimitCounterStore(IConnectionMultiplexer redisConnection) 
             
             var data = await _redisDatabase.StringGetAsync(key);
             var rateLimitData = data.IsNullOrEmpty ? null : JsonConvert.DeserializeObject<RateLimitData>(data);
-            if (rateLimitData is not null && rateLimitData.CreatedAt.Add(rateLimitData.Expiration) < asOfDate)
+            if (rateLimitData?.Expiration != null && rateLimitData.CreatedAt.Add((TimeSpan)rateLimitData.Expiration) < asOfDate)
             {
                 rateLimitData = null;
             }
